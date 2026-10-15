@@ -1,0 +1,18 @@
+The following pytest tests were generated for `$function_name` but some of them fail.
+
+CURRENT TESTS
+```python
+$tests
+```
+
+FAILURE OUTPUT
+```
+$failures
+```
+
+FUNCTION UNDER TEST
+```python
+$function_source
+```
+
+Fix the tests (not the function). Keep the same helpers and constants. Return ONLY the corrected test functions as Python code, with no imports and no explanations.

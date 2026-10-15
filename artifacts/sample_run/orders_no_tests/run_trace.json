@@ -1,0 +1,115 @@
+[
+  {
+    "step": 1,
+    "agent": "ingestion_analysis",
+    "action": "indexed project",
+    "project": "orders_no_tests",
+    "source_files": 6,
+    "notebooks": 1,
+    "test_files": 0,
+    "functions": 15,
+    "existing_test_functions": 0,
+    "warnings": []
+  },
+  {
+    "step": 2,
+    "agent": "orchestrator",
+    "action": "routing decision",
+    "mode": "A",
+    "reason": "requested",
+    "runtime_upgrade": false
+  },
+  {
+    "step": 3,
+    "agent": "test_generator",
+    "action": "generated tests",
+    "module": "nb_orders_exploration",
+    "functions": [
+      "status_counts"
+    ],
+    "backend": "offline-template",
+    "llm_used": false
+  },
+  {
+    "step": 4,
+    "agent": "test_generator",
+    "action": "generated tests",
+    "module": "orders_etl.aggregations",
+    "functions": [
+      "daily_revenue",
+      "top_customers",
+      "customer_lifetime_value"
+    ],
+    "backend": "offline-template",
+    "llm_used": false
+  },
+  {
+    "step": 5,
+    "agent": "test_generator",
+    "action": "generated tests",
+    "module": "orders_etl.cleaning",
+    "functions": [
+      "clean_orders",
+      "add_order_total",
+      "flag_high_value",
+      "legacy_normalize_status"
+    ],
+    "backend": "offline-template",
+    "llm_used": false
+  },
+  {
+    "step": 6,
+    "agent": "test_generator",
+    "action": "generated tests",
+    "module": "orders_etl.utils",
+    "functions": [
+      "safe_divide",
+      "normalize_country",
+      "is_weekend"
+    ],
+    "backend": "offline-template",
+    "llm_used": false
+  },
+  {
+    "step": 7,
+    "agent": "test_generator",
+    "action": "skipped function",
+    "function": "orders_etl.pipeline.run_pipeline",
+    "reason": "parameter 'orders_path' needs a file fixture (planned for the final submission)"
+  },
+  {
+    "step": 8,
+    "agent": "test_generator",
+    "action": "skipped function",
+    "function": "orders_etl.pipeline.main",
+    "reason": "entry point (needs an integration test)"
+  },
+  {
+    "step": 9,
+    "agent": "test_generator",
+    "action": "skipped function",
+    "function": "orders_etl.storage.read_orders",
+    "reason": "parameter 'path' needs a file fixture (planned for the final submission)"
+  },
+  {
+    "step": 10,
+    "agent": "test_generator",
+    "action": "skipped function",
+    "function": "orders_etl.storage.write_parquet",
+    "reason": "parameter 'path' needs a file fixture (planned for the final submission)"
+  },
+  {
+    "step": 11,
+    "agent": "verifier",
+    "action": "static check",
+    "files": 4,
+    "valid": 4
+  },
+  {
+    "step": 12,
+    "agent": "verifier",
+    "action": "test run skipped",
+    "label": "after",
+    "reason": "missing: pytest, pyspark, coverage (install requirements.txt and a JDK to enable test execution)"
+  }
+]

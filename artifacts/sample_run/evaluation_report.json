@@ -1,0 +1,73 @@
+{
+  "llm_backend": "offline",
+  "mode_a_generation": {
+    "eligibility": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "true_positives": 11,
+      "false_positives": [],
+      "false_negatives": []
+    },
+    "tests_generated": 30,
+    "files_syntactically_valid": "4/4",
+    "skipped_as_expected": true,
+    "execution": {
+      "status": "skipped",
+      "reason": "missing: pytest, pyspark, coverage (install requirements.txt and a JDK to enable test execution)"
+    }
+  },
+  "mode_b_maintenance": {
+    "dead_functions": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "true_positives": 3,
+      "false_positives": [],
+      "false_negatives": []
+    },
+    "stale_test_imports": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "true_positives": 1,
+      "false_positives": [],
+      "false_negatives": []
+    },
+    "untested_functions": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "true_positives": 8,
+      "false_positives": [],
+      "false_negatives": []
+    },
+    "coverage": {
+      "baseline_percent": null,
+      "after_percent": null,
+      "target_percent": 80.0
+    },
+    "execution": {
+      "status": "skipped",
+      "reason": "missing: pytest, pyspark, coverage (install requirements.txt and a JDK to enable test execution)"
+    }
+  },
+  "mode_c_runtime_impact": {
+    "findings": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "true_positives": 16,
+      "false_positives": [],
+      "false_negatives": []
+    },
+    "impacted_files": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "true_positives": 4,
+      "false_positives": [],
+      "false_negatives": []
+    }
+  }
+}

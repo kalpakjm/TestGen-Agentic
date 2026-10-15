@@ -1,0 +1,325 @@
+{
+  "project": "legacy_runtime",
+  "mode_requested": "C",
+  "mode_resolved": "C",
+  "llm_backend": "offline-template",
+  "index": {
+    "project": "legacy_runtime",
+    "source_files": 3,
+    "notebooks": 2,
+    "test_files": 0,
+    "functions": 6,
+    "existing_test_functions": 0,
+    "warnings": []
+  },
+  "runtime_impact": {
+    "from_dbr": "13.3",
+    "to_dbr": "17.3",
+    "rules_checked": [
+      {
+        "id": "R001",
+        "title": "Modules removed in Python 3.12 (distutils, imp)",
+        "reason": "introduced in DBR 16.0"
+      },
+      {
+        "id": "R002",
+        "title": "ANSI SQL mode enabled by default (Spark 4.0)",
+        "reason": "introduced in DBR 17.0"
+      },
+      {
+        "id": "R003",
+        "title": "DataFrame.registerTempTable is deprecated",
+        "reason": "always (deprecated or restricted API)"
+      },
+      {
+        "id": "R004",
+        "title": "SQLContext is deprecated",
+        "reason": "always (deprecated or restricted API)"
+      },
+      {
+        "id": "R005",
+        "title": "PandasUDFType is deprecated",
+        "reason": "always (deprecated or restricted API)"
+      },
+      {
+        "id": "R006",
+        "title": "RDD API usage",
+        "reason": "always (deprecated or restricted API)"
+      },
+      {
+        "id": "R007",
+        "title": "DBFS mounts",
+        "reason": "always (deprecated or restricted API)"
+      },
+      {
+        "id": "R008",
+        "title": "Legacy Spark SQL configuration flags",
+        "reason": "always (deprecated or restricted API)"
+      }
+    ],
+    "findings": [
+      {
+        "rule_id": "R008",
+        "title": "Legacy Spark SQL configuration flags",
+        "file": "notebooks/legacy_daily_job.ipynb",
+        "location": "cell1:L1",
+        "snippet": "spark.conf.set(\"spark.sql.legacy.timeParserPolicy\", \"LEGACY\")",
+        "severity": "low",
+        "recommendation": "Remove the flag and fix the code for the new behaviour, or document why it is still needed.",
+        "applies": "always (deprecated or restricted API)"
+      },
+      {
+        "rule_id": "R007",
+        "title": "DBFS mounts",
+        "file": "notebooks/legacy_daily_job.ipynb",
+        "location": "cell2:L1",
+        "snippet": "dbutils.fs.mount(source=\"s3a://example-bucket/raw\", mount_point=\"/mnt/raw\")",
+        "severity": "medium",
+        "recommendation": "Read from Unity Catalog volumes (/Volumes/<catalog>/<schema>/<volume>) or external locations.",
+        "applies": "always (deprecated or restricted API)"
+      },
+      {
+        "rule_id": "R007",
+        "title": "DBFS mounts",
+        "file": "notebooks/legacy_daily_job.ipynb",
+        "location": "cell3:L3",
+        "snippet": "orders = spark.read.csv(\"/mnt/raw/orders.csv\", header=True)",
+        "severity": "medium",
+        "recommendation": "Read from Unity Catalog volumes (/Volumes/<catalog>/<schema>/<volume>) or external locations.",
+        "applies": "always (deprecated or restricted API)"
+      },
+      {
+        "rule_id": "R002",
+        "title": "ANSI SQL mode enabled by default (Spark 4.0)",
+        "file": "notebooks/legacy_daily_job.ipynb",
+        "location": "cell3:L4",
+        "snippet": "orders = orders.withColumn(\"qty\", F.col(\"qty\").cast(\"long\"))",
+        "severity": "high",
+        "recommendation": "Use try_cast / try_to_date where dirty input is expected, or set spark.sql.ansi.enabled=false explicitly. Update tests that assert on null results for bad input.",
+        "applies": "introduced in DBR 17.0"
+      },
+      {
+        "rule_id": "R006",
+        "title": "RDD API usage",
+        "file": "notebooks/legacy_report.py",
+        "location": "L10",
+        "snippet": "sample = orders.rdd.map(lambda row: row.amount).take(5)",
+        "severity": "medium",
+        "recommendation": "Rewrite with DataFrame operations (mapInPandas, mapPartitions equivalents) or run on a compute type that supports RDDs.",
+        "applies": "always (deprecated or restricted API)"
+      },
+      {
+        "rule_id": "R001",
+        "title": "Modules removed in Python 3.12 (distutils, imp)",
+        "file": "notebooks/legacy_report.py",
+        "location": "L14",
+        "snippet": "import imp",
+        "severity": "high",
+        "recommendation": "Replace distutils.version.LooseVersion with packaging.version.Version and imp with importlib.",
+        "applies": "introduced in DBR 16.0"
+      },
+      {
+        "rule_id": "R004",
+        "title": "SQLContext is deprecated",
+        "file": "src/legacy_etl/loaders.py",
+        "location": "L12",
+        "snippet": "sql_context = SQLContext(sc)",
+        "severity": "medium",
+        "recommendation": "Use the SparkSession (spark) object instead.",
+        "applies": "always (deprecated or restricted API)"
+      },
+      {
+        "rule_id": "R003",
+        "title": "DataFrame.registerTempTable is deprecated",
+        "file": "src/legacy_etl/loaders.py",
+        "location": "L14",
+        "snippet": "df.registerTempTable(\"orders_raw\")",
+        "severity": "medium",
+        "recommendation": "Use df.createOrReplaceTempView(name).",
+        "applies": "always (deprecated or restricted API)"
+      },
+      {
+        "rule_id": "R001",
+        "title": "Modules removed in Python 3.12 (distutils, imp)",
+        "file": "src/legacy_etl/loaders.py",
+        "location": "L2",
+        "snippet": "from distutils.version import LooseVersion",
+        "severity": "high",
+        "recommendation": "Replace distutils.version.LooseVersion with packaging.version.Version and imp with importlib.",
+        "applies": "introduced in DBR 16.0"
+      },
+      {
+        "rule_id": "R002",
+        "title": "ANSI SQL mode enabled by default (Spark 4.0)",
+        "file": "src/legacy_etl/loaders.py",
+        "location": "L20",
+        "snippet": "df.withColumn(\"amount\", F.col(\"amount\").cast(\"int\"))",
+        "severity": "high",
+        "recommendation": "Use try_cast / try_to_date where dirty input is expected, or set spark.sql.ansi.enabled=false explicitly. Update tests that assert on null results for bad input.",
+        "applies": "introduced in DBR 17.0"
+      },
+      {
+        "rule_id": "R002",
+        "title": "ANSI SQL mode enabled by default (Spark 4.0)",
+        "file": "src/legacy_etl/loaders.py",
+        "location": "L21",
+        "snippet": ".withColumn(\"order_date\", F.to_date(F.col(\"order_date\"), \"yyyy-MM-dd\"))",
+        "severity": "high",
+        "recommendation": "Use try_cast / try_to_date where dirty input is expected, or set spark.sql.ansi.enabled=false explicitly. Update tests that assert on null results for bad input.",
+        "applies": "introduced in DBR 17.0"
+      },
+      {
+        "rule_id": "R006",
+        "title": "RDD API usage",
+        "file": "src/legacy_etl/loaders.py",
+        "location": "L26",
+        "snippet": "return df.rdd.mapPartitions(lambda rows: [sum(1 for _ in rows)]).collect()",
+        "severity": "medium",
+        "recommendation": "Rewrite with DataFrame operations (mapInPandas, mapPartitions equivalents) or run on a compute type that supports RDDs.",
+        "applies": "always (deprecated or restricted API)"
+      },
+      {
+        "rule_id": "R004",
+        "title": "SQLContext is deprecated",
+        "file": "src/legacy_etl/loaders.py",
+        "location": "L3",
+        "snippet": "from pyspark.sql import SQLContext",
+        "severity": "medium",
+        "recommendation": "Use the SparkSession (spark) object instead.",
+        "applies": "always (deprecated or restricted API)"
+      },
+      {
+        "rule_id": "R007",
+        "title": "DBFS mounts",
+        "file": "src/legacy_etl/loaders.py",
+        "location": "L30",
+        "snippet": "return spark.read.parquet(\"/dbfs/mnt/raw/orders\")",
+        "severity": "medium",
+        "recommendation": "Read from Unity Catalog volumes (/Volumes/<catalog>/<schema>/<volume>) or external locations.",
+        "applies": "always (deprecated or restricted API)"
+      },
+      {
+        "rule_id": "R005",
+        "title": "PandasUDFType is deprecated",
+        "file": "src/legacy_etl/transforms.py",
+        "location": "L2",
+        "snippet": "from pyspark.sql.functions import PandasUDFType, pandas_udf",
+        "severity": "medium",
+        "recommendation": "Declare the UDF with Python type hints, e.g. def f(s: pd.Series) -> pd.Series.",
+        "applies": "always (deprecated or restricted API)"
+      },
+      {
+        "rule_id": "R005",
+        "title": "PandasUDFType is deprecated",
+        "file": "src/legacy_etl/transforms.py",
+        "location": "L5",
+        "snippet": "@pandas_udf(\"double\", PandasUDFType.SCALAR)",
+        "severity": "medium",
+        "recommendation": "Declare the UDF with Python type hints, e.g. def f(s: pd.Series) -> pd.Series.",
+        "applies": "always (deprecated or restricted API)"
+      }
+    ],
+    "impacted_files": [
+      "notebooks/legacy_daily_job.ipynb",
+      "notebooks/legacy_report.py",
+      "src/legacy_etl/loaders.py",
+      "src/legacy_etl/transforms.py"
+    ],
+    "impacted_notebooks": [
+      "notebooks/legacy_daily_job.ipynb",
+      "notebooks/legacy_report.py"
+    ],
+    "tests_to_review": [],
+    "actions": [
+      {
+        "rule_id": "R001",
+        "title": "Modules removed in Python 3.12 (distutils, imp)",
+        "files": [
+          "notebooks/legacy_report.py",
+          "src/legacy_etl/loaders.py"
+        ],
+        "recommendation": "Replace distutils.version.LooseVersion with packaging.version.Version and imp with importlib.",
+        "test_guidance": [
+          "Helpers that do not touch Spark are tested with plain pytest functions. Check the return type, boundary values and determinism."
+        ]
+      },
+      {
+        "rule_id": "R002",
+        "title": "ANSI SQL mode enabled by default (Spark 4.0)",
+        "files": [
+          "notebooks/legacy_daily_job.ipynb",
+          "src/legacy_etl/loaders.py"
+        ],
+        "recommendation": "Use try_cast / try_to_date where dirty input is expected, or set spark.sql.ansi.enabled=false explicitly. Update tests that assert on null results for bad input.",
+        "test_guidance": [
+          "Casting strings to int, double or date returns null for invalid input unless ANSI mode is enabled. Test both valid and invalid values, and pin spark.sql.ansi.enabled explicitly in the test session so behaviour does not change with the runtime."
+        ]
+      },
+      {
+        "rule_id": "R003",
+        "title": "DataFrame.registerTempTable is deprecated",
+        "files": [
+          "src/legacy_etl/loaders.py"
+        ],
+        "recommendation": "Use df.createOrReplaceTempView(name).",
+        "test_guidance": []
+      },
+      {
+        "rule_id": "R004",
+        "title": "SQLContext is deprecated",
+        "files": [
+          "src/legacy_etl/loaders.py"
+        ],
+        "recommendation": "Use the SparkSession (spark) object instead.",
+        "test_guidance": [
+          "Create one SparkSession per test session with a session-scoped pytest fixture. Use master local[1], disable the Spark UI and set spark.sql.shuffle.partitions to 1 so tests start fast and stay deterministic. Never connect to a real cluster from unit tests."
+        ]
+      },
+      {
+        "rule_id": "R005",
+        "title": "PandasUDFType is deprecated",
+        "files": [
+          "src/legacy_etl/transforms.py"
+        ],
+        "recommendation": "Declare the UDF with Python type hints, e.g. def f(s: pd.Series) -> pd.Series.",
+        "test_guidance": []
+      },
+      {
+        "rule_id": "R006",
+        "title": "RDD API usage",
+        "files": [
+          "notebooks/legacy_report.py",
+          "src/legacy_etl/loaders.py"
+        ],
+        "recommendation": "Rewrite with DataFrame operations (mapInPandas, mapPartitions equivalents) or run on a compute type that supports RDDs.",
+        "test_guidance": [
+          "Casting strings to int, double or date returns null for invalid input unless ANSI mode is enabled. Test both valid and invalid values, and pin spark.sql.ansi.enabled explicitly in the test session so behaviour does not change with the runtime."
+        ]
+      },
+      {
+        "rule_id": "R007",
+        "title": "DBFS mounts",
+        "files": [
+          "notebooks/legacy_daily_job.ipynb",
+          "src/legacy_etl/loaders.py"
+        ],
+        "recommendation": "Read from Unity Catalog volumes (/Volumes/<catalog>/<schema>/<volume>) or external locations.",
+        "test_guidance": [
+          "Casting strings to int, double or date returns null for invalid input unless ANSI mode is enabled. Test both valid and invalid values, and pin spark.sql.ansi.enabled explicitly in the test session so behaviour does not change with the runtime."
+        ]
+      },
+      {
+        "rule_id": "R008",
+        "title": "Legacy Spark SQL configuration flags",
+        "files": [
+          "notebooks/legacy_daily_job.ipynb"
+        ],
+        "recommendation": "Remove the flag and fix the code for the new behaviour, or document why it is still needed.",
+        "test_guidance": [
+          "Casting strings to int, double or date returns null for invalid input unless ANSI mode is enabled. Test both valid and invalid values, and pin spark.sql.ansi.enabled explicitly in the test session so behaviour does not change with the runtime."
+        ]
+      }
+    ],
+    "note": "Rules are a starter set; validate them against the official release notes. Test migration and optional code migration are planned for the final submission."
+  }
+}

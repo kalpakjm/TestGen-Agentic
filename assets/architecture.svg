@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 584" width="760" height="584" font-family="Helvetica, Arial, sans-serif" font-size="13">
+  <title>ptagent architecture: one router sends each codebase down the right agent chain</title>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#777"/></marker></defs>
+  <rect width="760" height="584" fill="#ffffff"/>
+  <text x="24" y="30" font-size="15" font-weight="600" fill="#111">One router sends each codebase down the right agent chain</text>
+  <g fill="none" stroke="#777" stroke-width="1.25">
+    <path d="M380 112V136" marker-end="url(#a)"/><path d="M380 192V208H136V224" marker-end="url(#a)"/>
+    <path d="M380 192V224" marker-end="url(#a)"/><path d="M380 192V208H624V224" marker-end="url(#a)"/>
+    <path d="M136 400V432" marker-end="url(#a)"/><path d="M380 400V432" marker-end="url(#a)"/>
+    <path d="M624 400V432" marker-end="url(#a)"/><path d="M380 488V520" marker-end="url(#a)"/>
+  </g>
+  <g stroke="#777" stroke-width="1.25" fill="#fff">
+    <rect x="240" y="56" width="280" height="56" rx="8"/>
+    <rect x="240" y="136" width="280" height="56" rx="8" fill="#e6f0fb" stroke="#2f6fd6" stroke-width="2"/>
+    <rect x="24" y="224" width="224" height="176" rx="8" fill="#efefec"/><rect x="268" y="224" width="224" height="176" rx="8" fill="#efefec"/><rect x="512" y="224" width="224" height="176" rx="8" fill="#efefec"/>
+    <rect x="40" y="256" width="192" height="56" rx="8"/>
+    <rect x="284" y="256" width="192" height="56" rx="8"/><rect x="284" y="328" width="192" height="56" rx="8"/>
+    <rect x="528" y="256" width="192" height="56" rx="8"/><rect x="528" y="328" width="192" height="56" rx="8"/>
+    <rect x="24" y="432" width="712" height="56" rx="8"/>
+    <rect x="24" y="520" width="712" height="40" rx="8" stroke-dasharray="4 4"/>
+  </g>
+  <g text-anchor="middle" fill="#111">
+    <text x="380" y="80" font-weight="600">Ingestion and analysis agent</text><text x="380" y="96" font-size="11.5" fill="#555">Parses code, detects tests</text>
+    <text x="380" y="160" font-weight="600">Orchestrator / router agent</text><text x="380" y="176" font-size="11.5" fill="#555">Picks Mode A, B or C</text>
+    <text x="136" y="280" font-weight="600">Test generation agent</text><text x="136" y="296" font-size="11.5" fill="#555">Writes pytest tests</text>
+    <text x="380" y="280" font-weight="600">Obsolete-code agent</text><text x="380" y="296" font-size="11.5" fill="#555">Dead code, stale tests</text>
+    <text x="380" y="352" font-weight="600">Coverage-gap agent</text><text x="380" y="368" font-size="11.5" fill="#555">Tests for uncovered lines</text>
+    <text x="624" y="280" font-weight="600">Runtime-impact agent</text><text x="624" y="296" font-size="11.5" fill="#555">Flags impacted notebooks</text>
+    <text x="624" y="352" font-weight="600">Migration agent (planned)</text><text x="624" y="368" font-size="11.5" fill="#555">Updates tests; code add-on</text>
+    <text x="380" y="456" font-weight="600">Execution and verification agent</text><text x="380" y="472" font-size="11.5" fill="#555">Runs tests, measures coverage, sends failures back to the generating agent</text>
+    <text x="380" y="545">Evaluation harness: coverage, pass rate, mutation score (planned), impact-detection accuracy</text>
+  </g>
+  <g font-weight="600" fill="#111"><text x="40" y="245">Mode A: no tests exist</text><text x="284" y="245">Mode B: tests exist</text><text x="528" y="245">Mode C: runtime upgrade</text></g>
+</svg>

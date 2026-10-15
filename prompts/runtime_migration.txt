@@ -1,0 +1,16 @@
+PLANNED FOR THE FINAL SUBMISSION (not used by the baseline).
+
+A Databricks Runtime upgrade from $from_dbr to $to_dbr changes behaviour covered by rule $rule_id:
+$rule_description
+
+AFFECTED CODE
+```python
+$code
+```
+
+EXISTING TESTS THAT IMPORT THIS CODE
+```python
+$tests
+```
+
+Rewrite the tests so that they assert the new behaviour. Code migration is an optional add-on: only propose a code change if asked, and show it as a diff.

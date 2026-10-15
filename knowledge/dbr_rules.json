@@ -1,0 +1,89 @@
+{
+  "_note": "Starter rule set for the baseline. Rules are illustrative and MUST be validated against the official Databricks Runtime release notes and Apache Spark migration guides before being relied on. 'introduced_in' is the first Databricks Runtime (DBR) version where the change is assumed to apply.",
+  "rules": [
+    {
+      "id": "R001",
+      "title": "Modules removed in Python 3.12 (distutils, imp)",
+      "description": "Python 3.12 removed the distutils and imp modules. Runtimes that ship Python 3.12 fail with ImportError on code that still imports them.",
+      "matchers": [{"type": "import", "names": ["distutils", "imp"]}],
+      "applies": {"type": "upgrade_range", "introduced_in": "16.0"},
+      "severity": "high",
+      "recommendation": "Replace distutils.version.LooseVersion with packaging.version.Version and imp with importlib."
+    },
+    {
+      "id": "R002",
+      "title": "ANSI SQL mode enabled by default (Spark 4.0)",
+      "description": "With ANSI mode on, invalid casts and malformed date strings raise errors instead of returning null, and integer overflow raises an error.",
+      "matchers": [
+        {"type": "cast_to", "types": ["int", "integer", "long", "bigint", "short", "smallint", "float", "double", "decimal", "date", "timestamp"]},
+        {"type": "dotted_suffix", "names": ["to_date", "to_timestamp"]}
+      ],
+      "applies": {"type": "upgrade_range", "introduced_in": "17.0"},
+      "severity": "high",
+      "recommendation": "Use try_cast / try_to_date where dirty input is expected, or set spark.sql.ansi.enabled=false explicitly. Update tests that assert on null results for bad input."
+    },
+    {
+      "id": "R003",
+      "title": "DataFrame.registerTempTable is deprecated",
+      "description": "registerTempTable has been deprecated since Spark 2.0 in favour of createOrReplaceTempView.",
+      "matchers": [{"type": "dotted_suffix", "names": ["registerTempTable"]}],
+      "applies": {"type": "always"},
+      "severity": "medium",
+      "recommendation": "Use df.createOrReplaceTempView(name)."
+    },
+    {
+      "id": "R004",
+      "title": "SQLContext is deprecated",
+      "description": "SQLContext and HiveContext have been superseded by SparkSession since Spark 2.0 and are deprecated.",
+      "matchers": [
+        {"type": "import_from_name", "names": ["SQLContext", "HiveContext"]},
+        {"type": "name", "names": ["SQLContext", "HiveContext"]}
+      ],
+      "applies": {"type": "always"},
+      "severity": "medium",
+      "recommendation": "Use the SparkSession (spark) object instead."
+    },
+    {
+      "id": "R005",
+      "title": "PandasUDFType is deprecated",
+      "description": "Pandas UDF types (PandasUDFType.SCALAR etc.) were deprecated in Spark 3.0 in favour of Python type hints.",
+      "matchers": [
+        {"type": "import_from_name", "names": ["PandasUDFType"]},
+        {"type": "name", "names": ["PandasUDFType"]}
+      ],
+      "applies": {"type": "always"},
+      "severity": "medium",
+      "recommendation": "Declare the UDF with Python type hints, e.g. def f(s: pd.Series) -> pd.Series."
+    },
+    {
+      "id": "R006",
+      "title": "RDD API usage",
+      "description": "The RDD API is not available on all compute types (for example standard access mode clusters and serverless compute).",
+      "matchers": [{"type": "dotted_suffix", "names": [".rdd", ".sparkContext"]}],
+      "applies": {"type": "always"},
+      "severity": "medium",
+      "recommendation": "Rewrite with DataFrame operations (mapInPandas, mapPartitions equivalents) or run on a compute type that supports RDDs."
+    },
+    {
+      "id": "R007",
+      "title": "DBFS mounts",
+      "description": "Mount points (dbutils.fs.mount, /mnt paths, /dbfs/mnt) are a legacy access pattern; Databricks recommends Unity Catalog volumes or external locations.",
+      "matchers": [
+        {"type": "dotted_suffix", "names": ["dbutils.fs.mount", "dbutils.fs.unmount", "dbutils.fs.mounts"]},
+        {"type": "string_contains", "substrings": ["/dbfs/mnt", "dbfs:/mnt", "/mnt/"]}
+      ],
+      "applies": {"type": "always"},
+      "severity": "medium",
+      "recommendation": "Read from Unity Catalog volumes (/Volumes/<catalog>/<schema>/<volume>) or external locations."
+    },
+    {
+      "id": "R008",
+      "title": "Legacy Spark SQL configuration flags",
+      "description": "spark.sql.legacy.* flags restore old behaviour and may be removed in later Spark versions.",
+      "matchers": [{"type": "string_contains", "substrings": ["spark.sql.legacy."]}],
+      "applies": {"type": "always"},
+      "severity": "low",
+      "recommendation": "Remove the flag and fix the code for the new behaviour, or document why it is still needed."
+    }
+  ]
+}

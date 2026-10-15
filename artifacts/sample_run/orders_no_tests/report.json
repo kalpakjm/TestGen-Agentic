@@ -1,0 +1,186 @@
+{
+  "project": "orders_no_tests",
+  "mode_requested": "A",
+  "mode_resolved": "A",
+  "llm_backend": "offline-template",
+  "index": {
+    "project": "orders_no_tests",
+    "source_files": 6,
+    "notebooks": 1,
+    "test_files": 0,
+    "functions": 15,
+    "existing_test_functions": 0,
+    "warnings": []
+  },
+  "generation": {
+    "functions_targeted": 15,
+    "modules": [
+      {
+        "file": "test_nb_orders_exploration_generated.py",
+        "target_module": "nb_orders_exploration",
+        "functions": [
+          "status_counts"
+        ],
+        "tests": [
+          "test_status_counts_returns_expected_type",
+          "test_status_counts_handles_empty_input",
+          "test_status_counts_handles_null_values"
+        ]
+      },
+      {
+        "file": "test_orders_etl_aggregations_generated.py",
+        "target_module": "orders_etl.aggregations",
+        "functions": [
+          "daily_revenue",
+          "top_customers",
+          "customer_lifetime_value"
+        ],
+        "tests": [
+          "test_daily_revenue_returns_expected_type",
+          "test_daily_revenue_handles_empty_input",
+          "test_daily_revenue_handles_null_values",
+          "test_top_customers_returns_expected_type",
+          "test_top_customers_handles_empty_input",
+          "test_top_customers_handles_null_values",
+          "test_customer_lifetime_value_returns_expected_type",
+          "test_customer_lifetime_value_handles_empty_input",
+          "test_customer_lifetime_value_handles_null_values"
+        ]
+      },
+      {
+        "file": "test_orders_etl_cleaning_generated.py",
+        "target_module": "orders_etl.cleaning",
+        "functions": [
+          "clean_orders",
+          "add_order_total",
+          "flag_high_value",
+          "legacy_normalize_status"
+        ],
+        "tests": [
+          "test_clean_orders_returns_expected_type",
+          "test_clean_orders_handles_empty_input",
+          "test_clean_orders_handles_null_values",
+          "test_add_order_total_returns_expected_type",
+          "test_add_order_total_handles_empty_input",
+          "test_add_order_total_handles_null_values",
+          "test_flag_high_value_returns_expected_type",
+          "test_flag_high_value_handles_empty_input",
+          "test_flag_high_value_handles_null_values",
+          "test_legacy_normalize_status_returns_expected_type",
+          "test_legacy_normalize_status_handles_empty_input",
+          "test_legacy_normalize_status_handles_null_values"
+        ]
+      },
+      {
+        "file": "test_orders_etl_utils_generated.py",
+        "target_module": "orders_etl.utils",
+        "functions": [
+          "safe_divide",
+          "normalize_country",
+          "is_weekend"
+        ],
+        "tests": [
+          "test_safe_divide_returns_expected_type",
+          "test_safe_divide_is_deterministic",
+          "test_normalize_country_returns_expected_type",
+          "test_normalize_country_is_deterministic",
+          "test_is_weekend_returns_expected_type",
+          "test_is_weekend_is_deterministic"
+        ]
+      }
+    ],
+    "tests_generated": 30,
+    "skipped": [
+      {
+        "function": "orders_etl.pipeline.run_pipeline",
+        "reason": "parameter 'orders_path' needs a file fixture (planned for the final submission)"
+      },
+      {
+        "function": "orders_etl.pipeline.main",
+        "reason": "entry point (needs an integration test)"
+      },
+      {
+        "function": "orders_etl.storage.read_orders",
+        "reason": "parameter 'path' needs a file fixture (planned for the final submission)"
+      },
+      {
+        "function": "orders_etl.storage.write_parquet",
+        "reason": "parameter 'path' needs a file fixture (planned for the final submission)"
+      }
+    ],
+    "retrieval": {
+      "nb_orders_exploration.status_counts": [
+        "guide-3",
+        "R003"
+      ],
+      "orders_etl.aggregations.daily_revenue": [
+        "guide-3",
+        "R003"
+      ],
+      "orders_etl.aggregations.top_customers": [
+        "guide-5",
+        "guide-3"
+      ],
+      "orders_etl.aggregations.customer_lifetime_value": [
+        "guide-3",
+        "R003"
+      ],
+      "orders_etl.cleaning.clean_orders": [
+        "guide-3",
+        "R003"
+      ],
+      "orders_etl.cleaning.add_order_total": [
+        "guide-3",
+        "R003"
+      ],
+      "orders_etl.cleaning.flag_high_value": [
+        "guide-3",
+        "R003"
+      ],
+      "orders_etl.cleaning.legacy_normalize_status": [
+        "guide-3",
+        "R003"
+      ],
+      "orders_etl.utils.safe_divide": [
+        "guide-3",
+        "guide-9"
+      ],
+      "orders_etl.utils.normalize_country": [
+        "guide-3",
+        "guide-10"
+      ],
+      "orders_etl.utils.is_weekend": [
+        "guide-3",
+        "guide-7"
+      ]
+    },
+    "static_check": [
+      {
+        "file": "test_nb_orders_exploration_generated.py",
+        "ok": true,
+        "error": null
+      },
+      {
+        "file": "test_orders_etl_aggregations_generated.py",
+        "ok": true,
+        "error": null
+      },
+      {
+        "file": "test_orders_etl_cleaning_generated.py",
+        "ok": true,
+        "error": null
+      },
+      {
+        "file": "test_orders_etl_utils_generated.py",
+        "ok": true,
+        "error": null
+      }
+    ],
+    "execution": {
+      "status": "skipped",
+      "reason": "missing: pytest, pyspark, coverage (install requirements.txt and a JDK to enable test execution)",
+      "label": "after"
+    },
+    "repair_actions": []
+  }
+}

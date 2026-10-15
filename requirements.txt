@@ -1,0 +1,6 @@
+# Core dependencies (all free and open source)
+pyspark>=3.5.0,<4.0.0   # needs Java 8, 11 or 17; Java 17 recommended
+pytest>=7.4
+coverage>=7.3
+pyyaml>=6.0
+setuptools>=68          # provides the distutils shim some PySpark 3.5 builds need on Python 3.12

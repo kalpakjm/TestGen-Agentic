@@ -1,0 +1,142 @@
+[
+  {
+    "step": 1,
+    "agent": "ingestion_analysis",
+    "action": "indexed project",
+    "project": "orders_with_tests",
+    "source_files": 6,
+    "notebooks": 0,
+    "test_files": 3,
+    "functions": 14,
+    "existing_test_functions": 4,
+    "warnings": []
+  },
+  {
+    "step": 2,
+    "agent": "orchestrator",
+    "action": "routing decision",
+    "mode": "B",
+    "reason": "requested",
+    "runtime_upgrade": false
+  },
+  {
+    "step": 3,
+    "agent": "obsolete_code",
+    "action": "obsolete code analysis",
+    "dead_functions": 3,
+    "stale_test_imports": 1
+  },
+  {
+    "step": 4,
+    "agent": "obsolete_code",
+    "action": "wrote cleaned copy",
+    "file": "src/orders_etl/cleaning.py",
+    "removed": [
+      "legacy_normalize_status"
+    ]
+  },
+  {
+    "step": 5,
+    "agent": "obsolete_code",
+    "action": "wrote cleaned copy",
+    "file": "src/orders_etl/utils.py",
+    "removed": [
+      "is_weekend",
+      "normalize_country"
+    ]
+  },
+  {
+    "step": 6,
+    "agent": "obsolete_code",
+    "action": "wrote cleaned copy",
+    "file": "tests/test_legacy_tax.py",
+    "removed": [
+      "test_legacy_compute_tax_adds_eight_percent",
+      "import legacy_compute_tax"
+    ]
+  },
+  {
+    "step": 7,
+    "agent": "verifier",
+    "action": "test run skipped",
+    "label": "baseline",
+    "reason": "missing: pytest, pyspark, coverage (install requirements.txt and a JDK to enable test execution)"
+  },
+  {
+    "step": 8,
+    "agent": "coverage_gap",
+    "action": "coverage gap analysis",
+    "untested": 8,
+    "with_uncovered_lines": 0
+  },
+  {
+    "step": 9,
+    "agent": "test_generator",
+    "action": "generated tests",
+    "module": "orders_etl.aggregations",
+    "functions": [
+      "daily_revenue",
+      "top_customers",
+      "customer_lifetime_value"
+    ],
+    "backend": "offline-template",
+    "llm_used": false
+  },
+  {
+    "step": 10,
+    "agent": "test_generator",
+    "action": "generated tests",
+    "module": "orders_etl.cleaning",
+    "functions": [
+      "flag_high_value"
+    ],
+    "backend": "offline-template",
+    "llm_used": false
+  },
+  {
+    "step": 11,
+    "agent": "test_generator",
+    "action": "generated tests",
+    "module": "orders_etl.utils",
+    "functions": [
+      "safe_divide"
+    ],
+    "backend": "offline-template",
+    "llm_used": false
+  },
+  {
+    "step": 12,
+    "agent": "test_generator",
+    "action": "skipped function",
+    "function": "orders_etl.pipeline.run_pipeline",
+    "reason": "parameter 'orders_path' needs a file fixture (planned for the final submission)"
+  },
+  {
+    "step": 13,
+    "agent": "test_generator",
+    "action": "skipped function",
+    "function": "orders_etl.storage.read_orders",
+    "reason": "parameter 'path' needs a file fixture (planned for the final submission)"
+  },
+  {
+    "step": 14,
+    "agent": "test_generator",
+    "action": "skipped function",
+    "function": "orders_etl.storage.write_parquet",
+    "reason": "parameter 'path' needs a file fixture (planned for the final submission)"
+  },
+  {
+    "step": 15,
+    "agent": "verifier",
+    "action": "static check",
+    "files": 3,
+    "valid": 3
+  },
+  {
+    "step": 16,
+    "agent": "verifier",
+    "action": "test run skipped",
+    "label": "after",
+    "reason": "missing: pytest, pyspark, coverage (install requirements.txt and a JDK to enable test execution)"
+  }
+]

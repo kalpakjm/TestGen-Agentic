@@ -1,0 +1,30 @@
+# Baseline configuration for the PySpark test-generation agents.
+# All paths are relative to the repository root unless absolute.
+
+llm:
+  backend: offline            # offline (default, no LLM needed) | ollama (local open-weight model)
+  ollama_url: http://localhost:11434
+  ollama_model: qwen2.5-coder:7b
+  timeout_s: 120
+  temperature: 0.1
+
+paths:
+  output_dir: outputs
+  dbr_rules: knowledge/dbr_rules.json
+  guidelines: knowledge/testing_guidelines.md
+  prompts_dir: prompts
+
+analysis:
+  dataframe_param_names: [df, input_df, sdf, data]
+  entry_point_names: [main]
+  skip_dirs: [.git, __pycache__, .venv, venv, node_modules, outputs, .ipynb_checkpoints, build, dist, .pytest_cache]
+
+verification:
+  run_tests: auto             # auto (run if pytest, pyspark, coverage and java exist) | always | never
+  max_repair_attempts: 2
+  coverage_target: 80
+  timeout_s: 900
+
+runtime_upgrade:
+  from_dbr: "13.3"
+  to_dbr: "17.3"

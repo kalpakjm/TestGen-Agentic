@@ -1,0 +1,216 @@
+{
+  "project": "orders_with_tests",
+  "mode_requested": "B",
+  "mode_resolved": "B",
+  "llm_backend": "offline-template",
+  "index": {
+    "project": "orders_with_tests",
+    "source_files": 6,
+    "notebooks": 0,
+    "test_files": 3,
+    "functions": 14,
+    "existing_test_functions": 4,
+    "warnings": []
+  },
+  "obsolete_code": {
+    "dead_functions": [
+      {
+        "function": "orders_etl.cleaning.legacy_normalize_status",
+        "name": "legacy_normalize_status",
+        "file": "src/orders_etl/cleaning.py",
+        "lines": "35-37",
+        "origin": "module",
+        "referenced_by_tests": false
+      },
+      {
+        "function": "orders_etl.utils.normalize_country",
+        "name": "normalize_country",
+        "file": "src/orders_etl/utils.py",
+        "lines": "11-13",
+        "origin": "module",
+        "referenced_by_tests": false
+      },
+      {
+        "function": "orders_etl.utils.is_weekend",
+        "name": "is_weekend",
+        "file": "src/orders_etl/utils.py",
+        "lines": "16-18",
+        "origin": "module",
+        "referenced_by_tests": false
+      }
+    ],
+    "stale_test_imports": [
+      {
+        "test_file": "tests/test_legacy_tax.py",
+        "module": "orders_etl.cleaning",
+        "missing_name": "legacy_compute_tax",
+        "tests": [
+          "test_legacy_compute_tax_adds_eight_percent"
+        ]
+      }
+    ],
+    "cleaned_copies": [
+      {
+        "file": "src/orders_etl/cleaning.py",
+        "removed": [
+          "legacy_normalize_status"
+        ]
+      },
+      {
+        "file": "src/orders_etl/utils.py",
+        "removed": [
+          "is_weekend",
+          "normalize_country"
+        ]
+      },
+      {
+        "file": "tests/test_legacy_tax.py",
+        "removed": [
+          "test_legacy_compute_tax_adds_eight_percent",
+          "import legacy_compute_tax"
+        ]
+      }
+    ]
+  },
+  "baseline_run": {
+    "status": "skipped",
+    "reason": "missing: pytest, pyspark, coverage (install requirements.txt and a JDK to enable test execution)",
+    "label": "baseline"
+  },
+  "coverage_gaps": {
+    "untested_functions": [
+      "orders_etl.aggregations.daily_revenue",
+      "orders_etl.aggregations.top_customers",
+      "orders_etl.aggregations.customer_lifetime_value",
+      "orders_etl.cleaning.flag_high_value",
+      "orders_etl.pipeline.run_pipeline",
+      "orders_etl.storage.read_orders",
+      "orders_etl.storage.write_parquet",
+      "orders_etl.utils.safe_divide"
+    ],
+    "uncovered_by_function": {},
+    "targets": [
+      "orders_etl.aggregations.daily_revenue",
+      "orders_etl.aggregations.top_customers",
+      "orders_etl.aggregations.customer_lifetime_value",
+      "orders_etl.cleaning.flag_high_value",
+      "orders_etl.pipeline.run_pipeline",
+      "orders_etl.storage.read_orders",
+      "orders_etl.storage.write_parquet",
+      "orders_etl.utils.safe_divide"
+    ]
+  },
+  "generation": {
+    "functions_targeted": 8,
+    "modules": [
+      {
+        "file": "test_orders_etl_aggregations_generated.py",
+        "target_module": "orders_etl.aggregations",
+        "functions": [
+          "daily_revenue",
+          "top_customers",
+          "customer_lifetime_value"
+        ],
+        "tests": [
+          "test_daily_revenue_returns_expected_type",
+          "test_daily_revenue_handles_empty_input",
+          "test_daily_revenue_handles_null_values",
+          "test_top_customers_returns_expected_type",
+          "test_top_customers_handles_empty_input",
+          "test_top_customers_handles_null_values",
+          "test_customer_lifetime_value_returns_expected_type",
+          "test_customer_lifetime_value_handles_empty_input",
+          "test_customer_lifetime_value_handles_null_values"
+        ]
+      },
+      {
+        "file": "test_orders_etl_cleaning_generated.py",
+        "target_module": "orders_etl.cleaning",
+        "functions": [
+          "flag_high_value"
+        ],
+        "tests": [
+          "test_flag_high_value_returns_expected_type",
+          "test_flag_high_value_handles_empty_input",
+          "test_flag_high_value_handles_null_values"
+        ]
+      },
+      {
+        "file": "test_orders_etl_utils_generated.py",
+        "target_module": "orders_etl.utils",
+        "functions": [
+          "safe_divide"
+        ],
+        "tests": [
+          "test_safe_divide_returns_expected_type",
+          "test_safe_divide_is_deterministic"
+        ]
+      }
+    ],
+    "tests_generated": 14,
+    "skipped": [
+      {
+        "function": "orders_etl.pipeline.run_pipeline",
+        "reason": "parameter 'orders_path' needs a file fixture (planned for the final submission)"
+      },
+      {
+        "function": "orders_etl.storage.read_orders",
+        "reason": "parameter 'path' needs a file fixture (planned for the final submission)"
+      },
+      {
+        "function": "orders_etl.storage.write_parquet",
+        "reason": "parameter 'path' needs a file fixture (planned for the final submission)"
+      }
+    ],
+    "retrieval": {
+      "orders_etl.aggregations.daily_revenue": [
+        "guide-3",
+        "R003"
+      ],
+      "orders_etl.aggregations.top_customers": [
+        "guide-5",
+        "guide-3"
+      ],
+      "orders_etl.aggregations.customer_lifetime_value": [
+        "guide-3",
+        "R003"
+      ],
+      "orders_etl.cleaning.flag_high_value": [
+        "guide-3",
+        "R003"
+      ],
+      "orders_etl.utils.safe_divide": [
+        "guide-3",
+        "guide-9"
+      ]
+    },
+    "static_check": [
+      {
+        "file": "test_orders_etl_aggregations_generated.py",
+        "ok": true,
+        "error": null
+      },
+      {
+        "file": "test_orders_etl_cleaning_generated.py",
+        "ok": true,
+        "error": null
+      },
+      {
+        "file": "test_orders_etl_utils_generated.py",
+        "ok": true,
+        "error": null
+      }
+    ],
+    "execution": {
+      "status": "skipped",
+      "reason": "missing: pytest, pyspark, coverage (install requirements.txt and a JDK to enable test execution)",
+      "label": "after"
+    },
+    "repair_actions": []
+  },
+  "coverage": {
+    "baseline_percent": null,
+    "after_percent": null,
+    "target_percent": 80.0
+  }
+}

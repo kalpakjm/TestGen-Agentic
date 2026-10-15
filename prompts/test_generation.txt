@@ -1,0 +1,25 @@
+You are a senior data engineer writing pytest unit tests for PySpark code.
+
+TARGET FUNCTION (module: $module)
+```python
+$function_source
+```
+
+INPUT SCHEMA ASSUMED BY THE TESTS (inferred from the function body)
+$columns
+
+HELPERS ALREADY DEFINED IN THE TEST FILE (do not redefine them)
+- fixture `spark`: a local SparkSession
+- `_make(spark, schema, rows)`: builds a DataFrame
+- $constants
+
+GUIDANCE RETRIEVED FROM THE KNOWLEDGE BASE
+$context
+
+TASK
+Write pytest test functions for the target function. Cover: normal input, empty input and null values.
+Rules:
+- Return ONLY Python code containing test functions. No imports, no explanations, no markdown prose.
+- Every test name must start with `test_$function_name`.
+- Assert on concrete values where you can infer them; otherwise assert on type and schema.
+- Do not read or write files and do not use the network.

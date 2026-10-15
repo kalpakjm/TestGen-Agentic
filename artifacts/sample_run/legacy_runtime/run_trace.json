@@ -1,0 +1,32 @@
+[
+  {
+    "step": 1,
+    "agent": "ingestion_analysis",
+    "action": "indexed project",
+    "project": "legacy_runtime",
+    "source_files": 3,
+    "notebooks": 2,
+    "test_files": 0,
+    "functions": 6,
+    "existing_test_functions": 0,
+    "warnings": []
+  },
+  {
+    "step": 2,
+    "agent": "orchestrator",
+    "action": "routing decision",
+    "mode": "C",
+    "reason": "runtime upgrade requested",
+    "runtime_upgrade": true
+  },
+  {
+    "step": 3,
+    "agent": "runtime_impact",
+    "action": "runtime impact analysis",
+    "from_dbr": "13.3",
+    "to_dbr": "17.3",
+    "findings": 16,
+    "impacted_files": 4,
+    "impacted_tests": 0
+  }
+]

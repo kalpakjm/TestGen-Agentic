@@ -1,0 +1,110 @@
+[
+  {
+    "id": "guide-1",
+    "source": "testing_guidelines",
+    "title": "Test setup and SparkSession fixture",
+    "chars": 255
+  },
+  {
+    "id": "guide-2",
+    "source": "testing_guidelines",
+    "title": "Small deterministic DataFrames",
+    "chars": 205
+  },
+  {
+    "id": "guide-3",
+    "source": "testing_guidelines",
+    "title": "Null and empty input",
+    "chars": 271
+  },
+  {
+    "id": "guide-4",
+    "source": "testing_guidelines",
+    "title": "Testing aggregations and groupBy",
+    "chars": 185
+  },
+  {
+    "id": "guide-5",
+    "source": "testing_guidelines",
+    "title": "Testing window functions",
+    "chars": 199
+  },
+  {
+    "id": "guide-6",
+    "source": "testing_guidelines",
+    "title": "Testing joins",
+    "chars": 117
+  },
+  {
+    "id": "guide-7",
+    "source": "testing_guidelines",
+    "title": "Type casting and date parsing",
+    "chars": 243
+  },
+  {
+    "id": "guide-8",
+    "source": "testing_guidelines",
+    "title": "Deduplication",
+    "chars": 158
+  },
+  {
+    "id": "guide-9",
+    "source": "testing_guidelines",
+    "title": "Pure Python helpers",
+    "chars": 127
+  },
+  {
+    "id": "guide-10",
+    "source": "testing_guidelines",
+    "title": "Notebook code",
+    "chars": 139
+  },
+  {
+    "id": "R001",
+    "source": "dbr_rules",
+    "title": "Modules removed in Python 3.12 (distutils, imp)",
+    "chars": 246
+  },
+  {
+    "id": "R002",
+    "source": "dbr_rules",
+    "title": "ANSI SQL mode enabled by default (Spark 4.0)",
+    "chars": 315
+  },
+  {
+    "id": "R003",
+    "source": "dbr_rules",
+    "title": "DataFrame.registerTempTable is deprecated",
+    "chars": 145
+  },
+  {
+    "id": "R004",
+    "source": "dbr_rules",
+    "title": "SQLContext is deprecated",
+    "chars": 160
+  },
+  {
+    "id": "R005",
+    "source": "dbr_rules",
+    "title": "PandasUDFType is deprecated",
+    "chars": 200
+  },
+  {
+    "id": "R006",
+    "source": "dbr_rules",
+    "title": "RDD API usage",
+    "chars": 253
+  },
+  {
+    "id": "R007",
+    "source": "dbr_rules",
+    "title": "DBFS mounts",
+    "chars": 260
+  },
+  {
+    "id": "R008",
+    "source": "dbr_rules",
+    "title": "Legacy Spark SQL configuration flags",
+    "chars": 198
+  }
+]
