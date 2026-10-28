@@ -18,6 +18,8 @@ class LLMConfig:
     ollama_model: str = "qwen2.5-coder:7b"
     timeout_s: int = 120
     temperature: float = 0.1
+    max_tokens: int = 600
+    keep_alive: str = "10m"
 
 
 @dataclass

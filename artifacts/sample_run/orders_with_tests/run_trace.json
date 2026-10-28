@@ -58,16 +58,18 @@
   {
     "step": 7,
     "agent": "verifier",
-    "action": "test run skipped",
+    "action": "test run",
     "label": "baseline",
-    "reason": "missing: pytest, pyspark, coverage (install requirements.txt and a JDK to enable test execution)"
+    "passed": 3,
+    "failed": 0,
+    "coverage": 15.6
   },
   {
     "step": 8,
     "agent": "coverage_gap",
     "action": "coverage gap analysis",
     "untested": 8,
-    "with_uncovered_lines": 0
+    "with_uncovered_lines": 8
   },
   {
     "step": 9,
@@ -135,8 +137,10 @@
   {
     "step": 16,
     "agent": "verifier",
-    "action": "test run skipped",
+    "action": "test run",
     "label": "after",
-    "reason": "missing: pytest, pyspark, coverage (install requirements.txt and a JDK to enable test execution)"
+    "passed": 17,
+    "failed": 0,
+    "coverage": 43.8
   }
 ]

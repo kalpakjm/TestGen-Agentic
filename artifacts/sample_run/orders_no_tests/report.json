@@ -177,8 +177,14 @@
       }
     ],
     "execution": {
-      "status": "skipped",
-      "reason": "missing: pytest, pyspark, coverage (install requirements.txt and a JDK to enable test execution)",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "failures": [],
+      "coverage_percent": 48.4,
+      "status": "ran",
       "label": "after"
     },
     "repair_actions": []

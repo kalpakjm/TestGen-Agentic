@@ -73,8 +73,21 @@
     ]
   },
   "baseline_run": {
-    "status": "skipped",
-    "reason": "missing: pytest, pyspark, coverage (install requirements.txt and a JDK to enable test execution)",
+    "total": 4,
+    "passed": 3,
+    "failed": 0,
+    "errors": 1,
+    "skipped": 0,
+    "failures": [
+      {
+        "id": "::data.sample_projects.orders_with_tests.tests.test_legacy_tax",
+        "file": "",
+        "name": "data.sample_projects.orders_with_tests.tests.test_legacy_tax",
+        "message": "collection failure"
+      }
+    ],
+    "coverage_percent": 15.6,
+    "status": "ran",
     "label": "baseline"
   },
   "coverage_gaps": {
@@ -88,7 +101,50 @@
       "orders_etl.storage.write_parquet",
       "orders_etl.utils.safe_divide"
     ],
-    "uncovered_by_function": {},
+    "uncovered_by_function": {
+      "orders_etl.aggregations.daily_revenue": [
+        6,
+        8
+      ],
+      "orders_etl.aggregations.top_customers": [
+        15,
+        17,
+        18,
+        19
+      ],
+      "orders_etl.aggregations.customer_lifetime_value": [
+        26,
+        28,
+        32
+      ],
+      "orders_etl.cleaning.flag_high_value": [
+        32
+      ],
+      "orders_etl.pipeline.run_pipeline": [
+        13,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21
+      ],
+      "orders_etl.storage.read_orders": [
+        5,
+        7
+      ],
+      "orders_etl.storage.write_parquet": [
+        10,
+        12
+      ],
+      "orders_etl.utils.safe_divide": [
+        4,
+        6,
+        7,
+        8
+      ]
+    },
     "targets": [
       "orders_etl.aggregations.daily_revenue",
       "orders_etl.aggregations.top_customers",
@@ -202,15 +258,28 @@
       }
     ],
     "execution": {
-      "status": "skipped",
-      "reason": "missing: pytest, pyspark, coverage (install requirements.txt and a JDK to enable test execution)",
+      "total": 18,
+      "passed": 17,
+      "failed": 0,
+      "errors": 1,
+      "skipped": 0,
+      "failures": [
+        {
+          "id": "::data.sample_projects.orders_with_tests.tests.test_legacy_tax",
+          "file": "",
+          "name": "data.sample_projects.orders_with_tests.tests.test_legacy_tax",
+          "message": "collection failure"
+        }
+      ],
+      "coverage_percent": 43.8,
+      "status": "ran",
       "label": "after"
     },
     "repair_actions": []
   },
   "coverage": {
-    "baseline_percent": null,
-    "after_percent": null,
+    "baseline_percent": 15.6,
+    "after_percent": 43.8,
     "target_percent": 80.0
   }
 }

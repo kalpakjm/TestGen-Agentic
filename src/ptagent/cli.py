@@ -54,9 +54,12 @@ def _print_summary(report: dict):
     generation = report.get("generation")
     if generation:
         execution = generation["execution"]
-        ran = (f"{execution['passed']} passed / {execution['failed']} failed, coverage {execution.get('coverage_percent')}%"
+        ran = (f"{execution['passed']} passed / {execution['failed']} failed / {execution.get('errors', 0)} errors, "
+               f"coverage {execution.get('coverage_percent')}%"
                if execution.get("status") == "ran" else f"not executed ({execution.get('reason')})")
         print(f"  tests generated: {generation['tests_generated']} | skipped functions: {len(generation['skipped'])} | {ran}")
+    for warning in (generation or {}).get("warnings", []):
+        print(f"  WARNING: {warning}")
     if report.get("obsolete_code"):
         o = report["obsolete_code"]
         print(f"  obsolete: {len(o['dead_functions'])} dead functions, {len(o['stale_test_imports'])} stale test imports")

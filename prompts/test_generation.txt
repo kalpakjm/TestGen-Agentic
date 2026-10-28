@@ -1,25 +1,34 @@
-You are a senior data engineer writing pytest unit tests for PySpark code.
+You write pytest tests for PySpark code.
 
-TARGET FUNCTION (module: $module)
+FUNCTION UNDER TEST (module: $module)
 ```python
 $function_source
 ```
+Signature: $signature
+It is called in the tests exactly like this: $call
+Input columns used by the tests (name: kind): $columns
 
-INPUT SCHEMA ASSUMED BY THE TESTS (inferred from the function body)
-$columns
+ALREADY IN THE TEST FILE. Do not repeat or redefine any of this:
+- fixture `spark` (a local SparkSession) and helper `_make(spark, schema, rows)` that builds a DataFrame
+- constants: $constants
+- imports of pytest, DataFrame, Row, functions as F, types as T and of the function under test
+- these tests, which already check type, empty input and null input:
+```python
+$existing_tests
+```
 
-HELPERS ALREADY DEFINED IN THE TEST FILE (do not redefine them)
-- fixture `spark`: a local SparkSession
-- `_make(spark, schema, rows)`: builds a DataFrame
-- $constants
-
-GUIDANCE RETRIEVED FROM THE KNOWLEDGE BASE
+GUIDANCE
 $context
 
 TASK
-Write pytest test functions for the target function. Cover: normal input, empty input and null values.
+Write exactly 3 ADDITIONAL, SHORT test functions (each under 12 lines) that check concrete VALUES in the result:
+use `_make(spark, _SCHEMA_..., [...])` with a few hand-written rows (use the schema constant listed above), call the function exactly as shown, collect the result and assert on specific values you can work out by reading the function.
 Rules:
-- Return ONLY Python code containing test functions. No imports, no explanations, no markdown prose.
-- Every test name must start with `test_$function_name`.
-- Assert on concrete values where you can infer them; otherwise assert on type and schema.
-- Do not read or write files and do not use the network.
+- Return ONLY Python code with the test functions. No imports, no fixtures, no markdown, no explanations.
+- Each test takes only the argument `spark`.
+- Every test name starts with `test_$function_name` and differs from the existing names.
+- Compare numbers as numbers: sums and averages are floats (for example 300.0), counts are ints. Never compare a number with a string.
+- `result.collect()` returns Row objects. To compare plain values use `[r['col'] for r in result.collect()]`; to compare whole rows use `Row(col=value)`.
+- Work out each expected value by tracing the function line by line on YOUR input rows. For example: dense_rank has no gaps after ties (1, 2, 2, 3), groupBy puts null keys into their own group, and sums over empty or null values are null.
+- Every test needs at least one assert.
+- No files, no network.

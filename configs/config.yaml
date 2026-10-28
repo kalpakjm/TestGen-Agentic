@@ -4,8 +4,9 @@
 llm:
   backend: offline            # offline (default, no LLM needed) | ollama (local open-weight model)
   ollama_url: http://localhost:11434
-  ollama_model: qwen2.5-coder:7b
-  timeout_s: 120
+  # ollama_model: qwen2.5-coder:7b
+  ollama_model: qwen2.5-coder:3b
+  timeout_s: 600
   temperature: 0.1
 
 paths:

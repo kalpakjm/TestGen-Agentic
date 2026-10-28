@@ -1,0 +1,23 @@
+You write pytest tests for a plain Python function (no Spark involved).
+
+FUNCTION UNDER TEST (module: $module)
+```python
+$function_source
+```
+Signature: $signature
+Returns: the declared return type, if any.
+Example call that is already used: $call
+
+ALREADY IN THE TEST FILE. Do not repeat or redefine any of this:
+- the import of the function and of pytest
+- these tests, which already check the return type and determinism:
+```python
+$existing_tests
+```
+
+TASK
+Write exactly 3 ADDITIONAL, SHORT test functions (each under 8 lines) that check concrete VALUES and boundary cases, with expected results you can work out by reading the function (for example a normal case, a boundary, an edge input).
+Rules:
+- Return ONLY Python code with the test functions. No imports, no fixtures, no markdown, no explanations.
+- The tests take NO arguments and call the function with plain Python values that match the signature.
+- Every test name starts with `test_$function_name` and differs from the existing names.

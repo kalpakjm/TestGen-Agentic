@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 _HERE = Path(__file__).resolve().parent
-for _relative in ['../../../../data/sample_projects/orders_no_tests/src', '../extracted']:
+for _relative in ['..\\..\\..\\..\\data\\sample_projects\\orders_no_tests\\src', '..\\extracted']:
     _candidate = str((_HERE / _relative).resolve())
     if _candidate not in sys.path:
         sys.path.insert(0, _candidate)

@@ -108,8 +108,10 @@
   {
     "step": 12,
     "agent": "verifier",
-    "action": "test run skipped",
+    "action": "test run",
     "label": "after",
-    "reason": "missing: pytest, pyspark, coverage (install requirements.txt and a JDK to enable test execution)"
+    "passed": 30,
+    "failed": 0,
+    "coverage": 48.4
   }
 ]

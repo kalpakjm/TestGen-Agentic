@@ -13,7 +13,7 @@
   - `orders_etl.storage.read_orders`: parameter 'path' needs a file fixture (planned for the final submission)
   - `orders_etl.storage.write_parquet`: parameter 'path' needs a file fixture (planned for the final submission)
 - Static check: 3/3 files valid
-- Execution: skipped - missing: pytest, pyspark, coverage (install requirements.txt and a JDK to enable test execution)
+- Execution: 17 passed, 0 failed, 1 errors; coverage 43.8%
 
 ## Obsolete code
 
@@ -26,5 +26,5 @@
 
 - Functions without tests: 8
 
-- Coverage before: None, after: None, target: 80.0
+- Coverage before: 15.6, after: 43.8, target: 80.0
 

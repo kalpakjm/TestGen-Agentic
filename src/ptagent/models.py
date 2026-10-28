@@ -87,6 +87,7 @@ class FunctionTests:
     tests: str
     used_llm: bool = False
     note: str = ""
+    rejected_text: str = ""
 
 
 @dataclass

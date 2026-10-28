@@ -70,7 +70,7 @@ class VerifierAgent(Agent):
             sys.executable, "-m", "coverage", "run", "--branch",
             "--source=" + ",".join(str(r) for r in source_roots),
             "-m", "pytest", *[str(p) for p in paths],
-            "-q", "--continue-on-collection-errors", "-p", "no:cacheprovider", f"--junitxml={junit}",
+            "-q", "-vv", "--continue-on-collection-errors", "-p", "no:cacheprovider", f"--junitxml={junit}",
         ]
         try:
             proc = subprocess.run(cmd, cwd=work, env=env, capture_output=True, text=True, timeout=self.cfg.verify_timeout_s)
@@ -109,10 +109,12 @@ class VerifierAgent(Agent):
                         errors += 1
                     message = (bad.get("message") or bad.text or "").strip().splitlines()
                     failures.append({
+                        "kind": "failure" if case.find("failure") is not None else "error",
                         "id": f"{case.get('classname', '')}::{case.get('name', '')}",
                         "file": (case.get("classname", "").split(".")[-1]),
                         "name": case.get("name", ""),
                         "message": (message[0] if message else "")[:300],
+                        "detail": (bad.text or "").strip()[:1500],
                     })
         passed = total - failed - errors - skipped
         return {"total": total, "passed": passed, "failed": failed, "errors": errors,

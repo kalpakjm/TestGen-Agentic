@@ -1,11 +1,11 @@
-The following pytest tests were generated for `$function_name` but some of them fail.
+The following pytest tests were generated for `$function_name`, and some of them fail.
 
 CURRENT TESTS
 ```python
 $tests
 ```
 
-FAILURE OUTPUT
+FAILURE DETAILS (actual result versus expected result)
 ```
 $failures
 ```
@@ -15,4 +15,6 @@ FUNCTION UNDER TEST
 $function_source
 ```
 
-Fix the tests (not the function). Keep the same helpers and constants. Return ONLY the corrected test functions as Python code, with no imports and no explanations.
+For each failing test, decide whether the expected value or the way the result is read is wrong. Trace the function on that test's input rows, then correct the TEST. Never delete assertions or replace them with trivial ones.
+Reminder: `collect()` returns Row objects; compare plain values with `[r['col'] for r in rows]`.
+Return ONLY the corrected test functions as Python code: no imports, no fixtures, no explanations.

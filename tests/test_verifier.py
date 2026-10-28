@@ -25,6 +25,8 @@ class VerifierParsingTests(unittest.TestCase):
         self.assertEqual((result["total"], result["passed"], result["failed"], result["errors"], result["skipped"]),
                          (4, 1, 1, 1, 1))
         self.assertEqual(result["failures"][0]["name"], "test_bad")
+        self.assertEqual([f["kind"] for f in result["failures"]], ["failure", "error"])
+        self.assertEqual(result["failures"][0]["detail"], "trace")
         self.assertTrue(result["failures"][0]["file"].endswith("_generated"))
 
     def test_coverage_parsing(self):

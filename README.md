@@ -82,7 +82,7 @@ Optional local LLM (free): install [Ollama](https://ollama.com), run `ollama pul
 | Component | Status |
 | --- | --- |
 | Project and notebook analysis (`.py`, `.ipynb`, Databricks `.py`) | Working; unit tested |
-| Mode A: template test generation with schema inference, verification and quarantine of failing tests | Working; generated files are syntax-checked and unit tested |
+| Mode A: template test generation with schema inference, file fixtures for path parameters, verification and quarantine of failing tests | Working; run on real Spark for the sample projects |
 | Mode A: LLM-assisted generation and repair (Ollama) | Implemented, not yet evaluated |
 | Mode B: dead-code and stale-test detection, cleaned copies | Working; unit tested |
 | Mode B: untested-function detection; line-level gaps from coverage data | Working (line-level gaps need Spark to run) |
@@ -96,7 +96,7 @@ Optional local LLM (free): install [Ollama](https://ollama.com), run `ollama pul
 ## Known limitations
 - Generated tests are structural (return type, empty input, null input, determinism for pure functions). They do not yet assert business results; that is the job of the LLM backend and of the planned improvements.
 - Schema inference is heuristic; unusual patterns fall back to string columns and may fail. Failing generated tests are repaired (LLM) or quarantined (offline) and reported.
-- Functions that need file paths, multiple fixtures or complex types are skipped and listed with a reason.
+- Functions with plain string path parameters get file-fixture tests (a temporary CSV is written for inputs, a temporary folder is used for outputs). These tests are template-only, and the input CSV uses the columns found in the project's other functions. Functions that need other fixtures or complex types, and entry points like `main`, are skipped and listed with a reason.
 - Dead-code detection is name based. Functions used only through dynamic dispatch, a public API or external callers are reported as dead and need a human decision. Nothing is deleted automatically.
 - Notebook support extracts function definitions only. Cell-level logic and cross-cell globals are not tested.
 - The runtime rules in `knowledge/dbr_rules.json` are an illustrative starter set. The versions at which each rule starts to apply must be checked against the official Databricks release notes before relying on them.

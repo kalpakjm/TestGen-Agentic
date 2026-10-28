@@ -105,17 +105,39 @@ class Orchestrator(Agent):
         extra = [extracted] if extracted.exists() else []
         paths = list(existing_dirs) + [out_dir / "generated_tests"]
         execution = self.verifier.run_tests(paths, index.source_roots, extra, out_dir, "after")
-        repairs, attempts = [], 0
+        repairs, attempts, warnings, previous = [], 0, [], None
         while execution.get("status") == "ran" and attempts < self.cfg.max_repair_attempts:
-            failing = {f["name"]: f["message"] for f in execution["failures"] if f["file"].endswith("_generated")}
+            # Only assertion/call failures can be repaired. Errors (fixture setup, imports) point at the
+            # environment or the test file layout, and asking a model to rewrite tests cannot fix them.
+            failing = {f["name"]: (f.get("detail") or f["message"]) for f in execution["failures"]
+                       if f.get("kind") == "failure" and f["file"].endswith("_generated")}
             if not failing:
                 break
+            if previous is not None and set(failing) == previous:
+                self.log("repair stopped", reason="the same tests are still failing")
+                break
+            previous = set(failing)
             actions = self.generator.repair(modules, failing, index)
             attempts += 1
             if not actions:
                 break
             repairs.extend(actions)
             execution = self.verifier.run_tests(paths, index.source_roots, extra, out_dir, "after")
+        if execution.get("status") == "ran":
+            leftover = {f["name"]: (f.get("detail") or f["message"]) for f in execution["failures"]
+                        if f.get("kind") == "failure" and f["file"].endswith("_generated")}
+            if leftover:
+                actions = self.generator.repair(modules, leftover, index, quarantine_only=True)
+                repairs.extend(actions)
+                execution = self.verifier.run_tests(paths, index.source_roots, extra, out_dir, "after")
+        if execution.get("status") == "ran" and execution.get("errors", 0) > 0:
+            generated_errors = [f for f in execution["failures"] if f.get("kind") == "error" and f["file"].endswith("_generated")]
+            if generated_errors:
+                warnings.append(
+                    f"{len(generated_errors)} generated tests errored before running (fixture setup or import). "
+                    "This usually means the environment, for example Spark could not start. "
+                    f"First message: {generated_errors[0]['message']}")
+                self.log("environment warning", errors=len(generated_errors))
         generated = [
             {"file": m.path.name, "target_module": m.target_module,
              "functions": [b.function for b in m.blocks],
@@ -131,6 +153,7 @@ class Orchestrator(Agent):
             "static_check": static,
             "execution": {k: v for k, v in execution.items() if k != "uncovered"},
             "repair_actions": repairs,
+            "warnings": warnings,
         }
 
     # ------------------------------------------------------------------ reports

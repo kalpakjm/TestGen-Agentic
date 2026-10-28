@@ -10,12 +10,12 @@
     "orders_etl.utils.safe_divide",
     "orders_etl.utils.normalize_country",
     "orders_etl.utils.is_weekend",
-    "nb_orders_exploration.status_counts"
-  ],
-  "expected_skipped": [
+    "nb_orders_exploration.status_counts",
     "orders_etl.storage.read_orders",
     "orders_etl.storage.write_parquet",
-    "orders_etl.pipeline.run_pipeline",
+    "orders_etl.pipeline.run_pipeline"
+  ],
+  "expected_skipped": [
     "orders_etl.pipeline.main"
   ]
 }
