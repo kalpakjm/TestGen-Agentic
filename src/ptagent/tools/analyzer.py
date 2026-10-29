@@ -66,6 +66,8 @@ def extract_functions(tree, source, module, file, origin="module", cell=None) ->
                 source="\n".join(lines[start - 1 : end]),
                 origin=origin,
                 cell=cell,
+                decorators=[_unparse(d) or "" for d in node.decorator_list],
+                keep=any("ptagent: keep" in line for line in lines[start - 1 : node.lineno]),
             )
         )
     return found

@@ -7,6 +7,7 @@ Mode C  runtime upgrade requested -> find impacted notebooks/modules and the tes
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 from ..kb import KnowledgeBase
@@ -36,7 +37,8 @@ class Orchestrator(Agent):
         self.impact = RuntimeImpactAgent(self.trace, cfg, self.kb)
 
     # ------------------------------------------------------------------ routing
-    def run(self, project_dir, mode="auto", from_dbr=None, to_dbr=None, out_root=None) -> dict:
+    def run(self, project_dir, mode="auto", from_dbr=None, to_dbr=None, out_root=None,
+            apply_in_place=False, confirm=None) -> dict:
         index = self.ingestion.run(project_dir)
         out_dir = Path(out_root or self.cfg.output_dir) / index.name
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -66,7 +68,7 @@ class Orchestrator(Agent):
         if resolved == "A":
             report["generation"] = self._generate_and_verify(index, index.functions, out_dir, existing_dirs=[])
         elif resolved == "B":
-            report.update(self._mode_b(index, out_dir))
+            report.update(self._mode_b(index, out_dir, apply_in_place, confirm))
         if upgrade_requested:
             report["runtime_impact"] = self.impact.analyze(
                 index, from_dbr or self.cfg.from_dbr, to_dbr or self.cfg.to_dbr)
@@ -75,9 +77,11 @@ class Orchestrator(Agent):
         return report
 
     # ------------------------------------------------------------------ mode B
-    def _mode_b(self, index, out_dir) -> dict:
+    def _mode_b(self, index, out_dir, apply_in_place=False, confirm=None) -> dict:
         obsolete = self.obsolete.analyze(index)
         obsolete["cleaned_copies"] = self.obsolete.apply(index, obsolete, out_dir)
+        if (out_dir / "cleanup.patch").exists():
+            obsolete["patch_file"] = str(out_dir / "cleanup.patch")
         dead = {d["function"] for d in obsolete["dead_functions"]}
         entry_points = {fn.qualname for fn in index.functions if fn.name in self.cfg.entry_point_names}
         existing_dirs = sorted({p.parent for p in index.test_files})
@@ -88,14 +92,68 @@ class Orchestrator(Agent):
         targets = [fn for fn in index.functions if fn.qualname in set(gaps["targets"])]
         generation = self._generate_and_verify(index, targets, out_dir, existing_dirs=existing_dirs)
 
+        # Measure again on a copy of the project with the obsolete code removed, so coverage is not
+        # diluted by code that is about to be deleted.
+        cleaned_run = None
+        if obsolete["cleaned_copies"]:
+            cleaned_root = self._build_cleaned_project(index, out_dir)
+            cleaned_existing = [cleaned_root / d.relative_to(index.root) for d in existing_dirs]
+            cleaned_roots = [cleaned_root / Path(r).relative_to(index.root) for r in index.source_roots]
+            extracted = out_dir / "extracted"
+            cleaned_run = self.verifier.run_tests(
+                cleaned_existing + [out_dir / "generated_tests"], cleaned_roots,
+                [extracted] if extracted.exists() else [], out_dir, "cleaned")
+
+        after = generation["execution"].get("coverage_percent")
+        after_cleanup = cleaned_run.get("coverage_percent") if cleaned_run and cleaned_run.get("status") == "ran" else None
+        warnings = []
+        if after_cleanup == 0.0 and (after or 0) > 0:
+            warnings.append("The run on the cleaned copy measured 0% although the normal run measured "
+                            f"{after}%: the tests probably imported the original sources, so the cleaned "
+                            "number was ignored.")
+            after_cleanup = None
+        final = after_cleanup if after_cleanup is not None else after
         coverage = {
             "baseline_percent": baseline.get("coverage_percent"),
-            "after_percent": generation["execution"].get("coverage_percent"),
+            "after_percent": after,
+            "after_cleanup_percent": after_cleanup,
+            "final_percent": final,
             "target_percent": self.cfg.coverage_target,
+            "verdict": coverage_verdict(final, self.cfg.coverage_target),
         }
+        self.log("coverage verdict", **coverage)
+        if apply_in_place:
+            obsolete["applied_in_place"] = self.obsolete.apply_in_place(
+                index, out_dir, confirm or (lambda count: False))
         baseline_slim = {k: v for k, v in baseline.items() if k != "uncovered"}
-        return {"obsolete_code": obsolete, "baseline_run": baseline_slim, "coverage_gaps": gaps,
-                "generation": generation, "coverage": coverage}
+        if warnings:
+            generation["warnings"] = list(generation.get("warnings", [])) + warnings
+        report = {"obsolete_code": obsolete, "baseline_run": baseline_slim, "coverage_gaps": gaps,
+                  "generation": generation, "coverage": coverage}
+        if cleaned_run is not None:
+            report["cleaned_run"] = {k: v for k, v in cleaned_run.items() if k != "uncovered"}
+        return report
+
+    def _build_cleaned_project(self, index, out_dir: Path) -> Path:
+        """Copy the project and overlay the cleaned files, without touching the original."""
+        target = out_dir / "cleaned_project"
+        if target.exists():
+            shutil.rmtree(target)
+        skip = set(self.cfg.skip_dirs) | {"outputs", ".venv"}
+        out_resolved = out_dir.resolve()
+
+        def ignore(directory, names):
+            return [n for n in names if n in skip or n.startswith(".") or n.endswith(".pyc")
+                    or (Path(directory) / n).resolve() == out_resolved]
+
+        shutil.copytree(index.root, target, ignore=ignore)
+        refactored = out_dir / "refactored"
+        for source in refactored.rglob("*"):
+            if source.is_file():
+                destination = target / source.relative_to(refactored)
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, destination)
+        return target
 
     # ------------------------------------------------------------------ generate + verify + repair
     def _generate_and_verify(self, index, functions, out_dir, existing_dirs) -> dict:
@@ -163,6 +221,15 @@ class Orchestrator(Agent):
         (out_dir / "report.md").write_text(render_markdown(report), encoding="utf-8")
 
 
+def coverage_verdict(final, target) -> str:
+    """PASS or FAIL against the coverage target, or 'not measured' when tests were not executed."""
+    if final is None:
+        return "not measured"
+    if final >= target:
+        return "PASS"
+    return f"FAIL ({round(target - final, 1)} points short)"
+
+
 def _names(source: str) -> list:
     from .test_generator import test_names
     return test_names(source)
@@ -195,7 +262,11 @@ def render_markdown(report: dict) -> str:
     if obsolete:
         lines += ["## Obsolete code", ""]
         for d in obsolete["dead_functions"]:
-            lines.append(f"- Dead function `{d['function']}` ({d['file']}:{d['lines']})")
+            lines.append(f"- Dead function `{d['function']}` ({d['file']}:{d['lines']}), confidence {d.get('confidence', 'high')}")
+        for p in obsolete.get("protected_functions", []):
+            lines.append(f"- Kept `{p['function']}` ({p['reason']})")
+        if obsolete.get("patch_file"):
+            lines.append(f"- Cleanup patch: `{obsolete['patch_file']}`")
         for s in obsolete["stale_test_imports"]:
             lines.append(f"- Stale test import `{s['missing_name']}` from `{s['module']}` in {s['test_file']}")
         lines.append("")
@@ -204,8 +275,10 @@ def render_markdown(report: dict) -> str:
         lines += ["## Coverage gaps", "", f"- Functions without tests: {len(gaps['untested_functions'])}", ""]
     coverage = report.get("coverage")
     if coverage:
-        lines += [f"- Coverage before: {coverage['baseline_percent']}, after: {coverage['after_percent']}, "
-                  f"target: {coverage['target_percent']}", ""]
+        lines += [f"- Coverage: existing tests {coverage['baseline_percent']}%, "
+                  f"plus generated tests {coverage['after_percent']}%, "
+                  f"after cleanup {coverage.get('after_cleanup_percent')}%",
+                  f"- Target {coverage['target_percent']}%: **{coverage.get('verdict')}**", ""]
     impact = report.get("runtime_impact")
     if impact:
         lines += [f"## Runtime impact (DBR {impact['from_dbr']} to {impact['to_dbr']})", "",

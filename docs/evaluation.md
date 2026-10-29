@@ -14,6 +14,9 @@ All precision and recall values on the three labelled samples are 1.0. Read this
 
 Pass rate and coverage are reported as `skipped` in the reference run because the build environment had no Spark. On a machine with Spark they are filled in automatically.
 
+## Mode B coverage on the sample project (real Spark)
+On `orders_with_tests`, running only the existing tests gave 15.6% coverage and adding the 14 generated tests gave 43.8% in the first real run. After the file-fixture patch, the full Mode B run reached 79.7%. Phase 3 adds a third measurement on a copy of the project with the dead functions removed, and a PASS or FAIL verdict against `coverage_target`. Record the numbers of the final run in the report.
+
 ## Planned evaluation for the final submission
 - A larger corpus of real, openly licensed PySpark projects (licences recorded).
 - Mutation score (mutmut) to measure whether generated tests detect injected bugs, not just whether they run.

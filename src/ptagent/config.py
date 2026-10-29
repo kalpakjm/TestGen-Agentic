@@ -31,6 +31,10 @@ class Config:
     prompts_dir: Path = REPO_ROOT / "prompts"
     dataframe_param_names: list = field(default_factory=lambda: ["df", "input_df", "sdf", "data"])
     entry_point_names: list = field(default_factory=lambda: ["main"])
+    keep_functions: list = field(default_factory=list)
+    keep_decorators: list = field(default_factory=lambda: [
+        "udf", "pandas_udf", "dlt.table", "dlt.view", "dp.table", "dp.materialized_view",
+        "fixture", "pytest.fixture", "click.command", "property", "staticmethod", "classmethod"])
     skip_dirs: list = field(default_factory=lambda: [".git", "__pycache__", ".venv", "venv", "outputs"])
     run_tests: str = "auto"
     max_repair_attempts: int = 2
@@ -66,6 +70,8 @@ def load_config(path: Optional[Path] = None) -> Config:
         cfg.prompts_dir = _resolve(paths["prompts_dir"])
     cfg.dataframe_param_names = analysis.get("dataframe_param_names", cfg.dataframe_param_names)
     cfg.entry_point_names = analysis.get("entry_point_names", cfg.entry_point_names)
+    cfg.keep_functions = analysis.get("keep_functions", cfg.keep_functions)
+    cfg.keep_decorators = analysis.get("keep_decorators", cfg.keep_decorators)
     cfg.skip_dirs = analysis.get("skip_dirs", cfg.skip_dirs)
     cfg.run_tests = verification.get("run_tests", cfg.run_tests)
     cfg.max_repair_attempts = int(verification.get("max_repair_attempts", cfg.max_repair_attempts))

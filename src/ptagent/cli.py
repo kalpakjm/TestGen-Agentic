@@ -38,6 +38,10 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--to-dbr", help="target Databricks Runtime, e.g. 17.3")
     run.add_argument("--backend", choices=["offline", "ollama"])
     run.add_argument("--output-dir")
+    run.add_argument("--fail-under", type=float, help="exit with code 1 if final coverage is below this percentage")
+    run.add_argument("--apply-in-place", action="store_true",
+                     help="Mode B: copy the cleanup over your sources (keeps .bak files; asks first)")
+    run.add_argument("--yes", action="store_true", help="do not ask for confirmation with --apply-in-place")
 
     demo = sub.add_parser("demo", help="run all three modes on the bundled sample projects")
     demo.add_argument("--backend", choices=["offline", "ollama"])
@@ -65,6 +69,13 @@ def _print_summary(report: dict):
         print(f"  obsolete: {len(o['dead_functions'])} dead functions, {len(o['stale_test_imports'])} stale test imports")
     if report.get("coverage_gaps"):
         print(f"  untested functions: {len(report['coverage_gaps']['untested_functions'])}")
+    if report.get("coverage"):
+        c = report["coverage"]
+        def pct(value):
+            return "n/a" if value is None else f"{value}%"
+
+        print(f"  coverage: existing tests {pct(c['baseline_percent'])} -> with generated tests {pct(c['after_percent'])} "
+              f"-> after cleanup {pct(c.get('after_cleanup_percent'))} | target {c['target_percent']}%: {c.get('verdict')}")
     if report.get("runtime_impact"):
         r = report["runtime_impact"]
         print(f"  runtime impact DBR {r['from_dbr']} -> {r['to_dbr']}: {len(r['findings'])} findings in "
@@ -78,9 +89,25 @@ def main(argv=None) -> int:
         print(json.dumps(build_index(args.project, cfg.skip_dirs).summary(), indent=2))
         return 0
     if args.command == "run":
-        report = Orchestrator(cfg).run(Path(args.project), args.mode, args.from_dbr, args.to_dbr)
+        def confirm(count):
+            if args.yes:
+                return True
+            return input(f"Copy cleaned versions of {count} files over your sources (.bak files are kept)? [y/N] ").strip().lower() in ("y", "yes")
+
+        report = Orchestrator(cfg).run(Path(args.project), args.mode, args.from_dbr, args.to_dbr,
+                                       apply_in_place=args.apply_in_place, confirm=confirm)
         _print_summary(report)
         print(f"  outputs: {cfg.output_dir / report['project']}")
+        if args.fail_under is not None:
+            final = (report.get("coverage") or {}).get("final_percent")
+            if final is None:
+                final = ((report.get("generation") or {}).get("execution") or {}).get("coverage_percent")
+            if final is None:
+                print("  coverage was not measured, so --fail-under cannot be checked")
+                return 2
+            if final < args.fail_under:
+                print(f"  FAIL: coverage {final}% is below {args.fail_under}%")
+                return 1
         return 0
     if args.command == "demo":
         for name, mode, versions in (("orders_no_tests", "A", (None, None)),

@@ -1,7 +1,15 @@
-"""Obsolete-code agent (Mode B): finds dead functions and stale tests, and can write a cleaned copy."""
+"""Obsolete-code agent (Mode B): finds dead functions and stale tests, and writes a cleanup patch.
+
+Safety rules: only functions that nothing references (confidence "high") are removed. Functions that only
+tests reference ("medium"), functions with registering decorators, functions listed in keep_functions and
+functions marked with "# ptagent: keep" are never removed. Source files are never modified unless the
+caller explicitly asks for an in-place apply.
+"""
 from __future__ import annotations
 
 import ast
+import difflib
+import shutil
 from pathlib import Path
 
 from ..tools.analyzer import module_name_for
@@ -17,22 +25,41 @@ class ObsoleteCodeAgent(Agent):
         self.cfg = cfg
 
     # ------------------------------------------------------------------ analysis
+    def _protected(self, fn):
+        """Reason why a function must not be reported as dead, or None."""
+        if fn.keep:
+            return "marked with '# ptagent: keep'"
+        if fn.name in self.cfg.keep_functions or fn.qualname in self.cfg.keep_functions:
+            return "listed in keep_functions"
+        for decorator in fn.decorators:
+            base = decorator.split("(")[0].strip()
+            if any(base == k or base.endswith("." + k) for k in self.cfg.keep_decorators):
+                return f"decorated with @{base}"
+        return None
+
     def analyze(self, index) -> dict:
         entry = set(self.cfg.entry_point_names)
-        dead = []
+        dead, protected = [], []
         for fn in index.functions:
             if fn.name.startswith("__") or fn.name in entry or fn.name.startswith("test"):
                 continue
             if fn.name in index.code_references:
                 continue
+            reason = self._protected(fn)
+            if reason:
+                protected.append({"function": fn.qualname, "file": fn.file, "reason": reason})
+                continue
+            used_by_tests = fn.name in index.test_references
             dead.append({
                 "function": fn.qualname, "name": fn.name, "file": fn.file,
                 "lines": f"{fn.lineno}-{fn.end_lineno}", "origin": fn.origin,
-                "referenced_by_tests": fn.name in index.test_references,
+                "referenced_by_tests": used_by_tests,
+                "confidence": "medium" if used_by_tests else "high",
             })
         stale = self._stale_test_imports(index)
-        self.log("obsolete code analysis", dead_functions=len(dead), stale_test_imports=len(stale))
-        return {"dead_functions": dead, "stale_test_imports": stale}
+        self.log("obsolete code analysis", dead_functions=len(dead), protected=len(protected),
+                 stale_test_imports=len(stale))
+        return {"dead_functions": dead, "protected_functions": protected, "stale_test_imports": stale}
 
     def _project_module_names(self, index) -> dict:
         """module name -> set of top-level names defined or re-exported in it."""
@@ -71,36 +98,72 @@ class ObsoleteCodeAgent(Agent):
 
     # ------------------------------------------------------------------ apply
     def apply(self, index, report: dict, out_dir: Path) -> list:
-        """Write cleaned copies of the affected files under out_dir/refactored. Sources are never modified."""
-        out_dir = Path(out_dir) / "refactored"
-        written = []
+        """Write cleaned copies under out_dir/refactored and a unified diff in out_dir/cleanup.patch.
+
+        Sources are never modified. Returns the list of changed files.
+        """
+        out_dir = Path(out_dir)
+        refactored = out_dir / "refactored"
+        if refactored.exists():
+            shutil.rmtree(refactored)
+        patch_file = out_dir / "cleanup.patch"
+        if patch_file.exists():
+            patch_file.unlink()
+        written, diffs = [], []
         dead_by_file = {}
         for item in report["dead_functions"]:
-            if item["origin"] == "module":
+            if item["origin"] == "module" and item["confidence"] == "high":
                 dead_by_file.setdefault(item["file"], set()).add(item["name"])
-        for rel, names in dead_by_file.items():
-            source = (index.root / rel).read_text(encoding="utf-8")
-            self._write(out_dir / rel, remove_functions(source, names))
-            written.append({"file": rel, "removed": sorted(names)})
         stale_by_file = {}
         for item in report["stale_test_imports"]:
             entry = stale_by_file.setdefault(item["test_file"], {"names": set(), "tests": set()})
             entry["names"].add(item["missing_name"])
             entry["tests"].update(item["tests"])
+
+        for rel, names in dead_by_file.items():
+            original = (index.root / rel).read_text(encoding="utf-8")
+            cleaned = remove_functions(original, names)
+            written.append({"file": rel, "removed": sorted(names)})
+            self._record(refactored / rel, original, cleaned, rel, diffs)
         for rel, entry in stale_by_file.items():
-            source = (index.root / rel).read_text(encoding="utf-8")
-            cleaned = remove_functions(source, entry["tests"])
-            cleaned = self._drop_imports(cleaned, entry["names"])
-            self._write(out_dir / rel, cleaned)
+            original = (index.root / rel).read_text(encoding="utf-8")
+            cleaned = self._drop_imports(remove_functions(original, entry["tests"]), entry["names"])
             written.append({"file": rel, "removed": sorted(entry["tests"]) + [f"import {n}" for n in sorted(entry["names"])]})
+            self._record(refactored / rel, original, cleaned, rel, diffs)
+        if diffs:
+            patch_file.write_text("".join(diffs), encoding="utf-8")
         for item in written:
             self.log("wrote cleaned copy", **item)
         return written
 
     @staticmethod
-    def _write(path: Path, text: str):
+    def _record(path: Path, original: str, cleaned: str, rel: str, diffs: list):
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
+        path.write_text(cleaned, encoding="utf-8")
+        diffs.extend(difflib.unified_diff(
+            original.splitlines(keepends=True), cleaned.splitlines(keepends=True),
+            fromfile=f"a/{rel}", tofile=f"b/{rel}"))
+
+    def apply_in_place(self, index, out_dir: Path, confirm) -> list:
+        """Copy the cleaned files over the sources, keeping a .bak copy of each. Needs explicit confirmation."""
+        refactored = Path(out_dir) / "refactored"
+        files = [f for f in refactored.rglob("*") if f.is_file()] if refactored.exists() else []
+        if not files:
+            return []
+        if not confirm(len(files)):
+            self.log("in-place apply declined", files=len(files))
+            return []
+        changed = []
+        for source in files:
+            rel = source.relative_to(refactored)
+            target = index.root / rel
+            backup = target.with_name(target.name + ".bak")
+            if not backup.exists():
+                shutil.copy2(target, backup)
+            shutil.copy2(source, target)
+            changed.append(rel.as_posix())
+        self.log("applied cleanup in place", files=changed)
+        return changed
 
     @staticmethod
     def _drop_imports(source: str, names) -> str:

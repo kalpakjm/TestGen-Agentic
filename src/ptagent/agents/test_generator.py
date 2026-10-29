@@ -42,9 +42,11 @@ for _relative in __PATHS__:
     _candidate = str((_HERE / _relative).resolve())
     if _candidate not in sys.path:
         sys.path.insert(0, _candidate)
-for _extra in os.environ.get("PTAGENT_PYTHONPATH", "").split(os.pathsep):
-    if _extra and _extra not in sys.path:
-        sys.path.insert(0, _extra)
+# Paths given by ptagent (for example a cleaned copy of the project) must win over the defaults above.
+_extras = [p for p in os.environ.get("PTAGENT_PYTHONPATH", "").split(os.pathsep) if p]
+for _extra in reversed(_extras):
+    sys.path[:] = [p for p in sys.path if os.path.normcase(p) != os.path.normcase(_extra)]
+    sys.path.insert(0, _extra)
 
 
 @pytest.fixture(scope="session")

@@ -31,6 +31,8 @@ class FunctionInfo:
     source: str
     origin: str = "module"  # module | notebook
     cell: Optional[int] = None
+    decorators: list = field(default_factory=list)
+    keep: bool = False  # marked with '# ptagent: keep'
 
     @property
     def qualname(self) -> str:
