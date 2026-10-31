@@ -52,17 +52,22 @@ for _extra in reversed(_extras):
 @pytest.fixture(scope="session")
 def spark():
     """Small local SparkSession shared by all generated tests."""
+    import json
+
     from pyspark.sql import SparkSession
 
-    return (
+    builder = (
         SparkSession.builder.master("local[1]")
         .appName("ptagent-generated-tests")
         .config("spark.ui.enabled", "false")
         .config("spark.sql.shuffle.partitions", "1")
         .config("spark.sql.session.timeZone", "UTC")
         .config("spark.sql.ansi.enabled", os.environ.get("PTAGENT_ANSI", "false"))
-        .getOrCreate()
     )
+    # options that emulate a target runtime (set by ptagent, for example {"spark.sql.ansi.enabled": "true"})
+    for key, value in json.loads(os.environ.get("PTAGENT_SPARK_CONF", "{}")).items():
+        builder = builder.config(key, value)
+    return builder.getOrCreate()
 '''
 
 SPARK_HELPERS = '''def _make(spark, schema, rows):
@@ -456,13 +461,19 @@ class TestGeneratorAgent(Agent):
                      backend=self.backend.name, llm_used=any(b.used_llm for b in blocks),
                      notes={b.function: b.note for b in blocks})
 
-        roots = [Path(r) for r in index.source_roots] + path_entries
-        relative = sorted({os.path.relpath(r, tests_dir) for r in roots})
-        (tests_dir / "conftest.py").write_text(CONFTEST.replace("__PATHS__", repr(relative)), encoding="utf-8")
+        self.write_conftest(tests_dir, [Path(r) for r in index.source_roots] + path_entries)
         for item in skipped:
             self.log("skipped function", **item)
         self._unload()
         return modules, skipped, retrieval
+
+    @staticmethod
+    def write_conftest(tests_dir: Path, roots) -> None:
+        """Write the shared conftest.py (Spark fixture and import paths) next to generated tests."""
+        tests_dir = Path(tests_dir)
+        tests_dir.mkdir(parents=True, exist_ok=True)
+        relative = sorted({os.path.relpath(r, tests_dir) for r in roots})
+        (tests_dir / "conftest.py").write_text(CONFTEST.replace("__PATHS__", repr(relative)), encoding="utf-8")
 
     # ------------------------------------------------------------------ repair
     def repair(self, modules, failures, index, quarantine_only=False):
@@ -476,7 +487,7 @@ class TestGeneratorAgent(Agent):
                     continue
                 fn = next((f for f in index.functions if f.name == block.function and f.module == module.target_module), None)
                 new_text, reject = None, None
-                if fn is not None and self.backend.name == "ollama" and not quarantine_only:
+                if fn is not None and getattr(self.backend, "uses_llm", False) and not quarantine_only:
                     plan, _ = self.plan(fn)
                     prompt = self.repair_prompt.safe_substitute(
                         function_name=block.function, tests=block.tests,

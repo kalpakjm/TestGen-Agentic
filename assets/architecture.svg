@@ -26,7 +26,7 @@
     <text x="380" y="280" font-weight="600">Obsolete-code agent</text><text x="380" y="296" font-size="11.5" fill="#555">Dead code, stale tests</text>
     <text x="380" y="352" font-weight="600">Coverage-gap agent</text><text x="380" y="368" font-size="11.5" fill="#555">Tests for uncovered lines</text>
     <text x="624" y="280" font-weight="600">Runtime-impact agent</text><text x="624" y="296" font-size="11.5" fill="#555">Flags impacted notebooks</text>
-    <text x="624" y="352" font-weight="600">Migration agent (planned)</text><text x="624" y="368" font-size="11.5" fill="#555">Updates tests; code add-on</text>
+    <text x="624" y="352" font-weight="600">Migration agent</text><text x="624" y="368" font-size="11.5" fill="#555">Tests first; code is an add-on</text>
     <text x="380" y="456" font-weight="600">Execution and verification agent</text><text x="380" y="472" font-size="11.5" fill="#555">Runs tests, measures coverage, sends failures back to the generating agent</text>
     <text x="380" y="545">Evaluation harness: coverage, pass rate, mutation score (planned), impact-detection accuracy</text>
   </g>

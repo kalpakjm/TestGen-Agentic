@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .agents.orchestrator import Orchestrator
 from .config import REPO_ROOT, load_config
+from .llm import BACKEND_NAMES
 from .evaluation.evaluate import evaluate
 from .tools.analyzer import build_index
 
@@ -18,9 +19,27 @@ def _config(args):
     cfg = load_config(Path(args.config) if args.config else None)
     if getattr(args, "backend", None):
         cfg.llm.backend = args.backend
+    if getattr(args, "model", None) and cfg.llm.backend != "offline":
+        setattr(cfg.llm, f"{cfg.llm.backend}_model", args.model)
+    if cfg.llm.backend in ("openai", "gemini", "anthropic"):
+        print(f"note: backend '{cfg.llm.backend}' sends your function source code to that provider's API "
+              f"(key from environment variable, usage is billed by the provider).", file=sys.stderr)
     if getattr(args, "output_dir", None):
         cfg.output_dir = Path(args.output_dir).resolve()
     return cfg
+
+
+def _notes_options(args) -> dict:
+    return {"rules": getattr(args, "rules", None), "local_dir": getattr(args, "release_notes_dir", None),
+            "offline": getattr(args, "offline", False), "refresh": getattr(args, "refresh_notes", False)}
+
+
+def _add_notes_flags(parser):
+    parser.add_argument("--rules", choices=["dynamic", "curated", "both"],
+                        help="dynamic: read the official release notes (default); curated: use knowledge/dbr_rules.json")
+    parser.add_argument("--release-notes-dir", help="folder with saved release-note pages named 17.3lts.html, 16.0.md ...")
+    parser.add_argument("--offline", action="store_true", help="do not use the network; use saved pages and the cache only")
+    parser.add_argument("--refresh-notes", action="store_true", help="ignore the cache and fetch the pages again")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -36,19 +55,30 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--mode", choices=["auto", "A", "B", "C"], default="auto")
     run.add_argument("--from-dbr", help="current Databricks Runtime, e.g. 13.3")
     run.add_argument("--to-dbr", help="target Databricks Runtime, e.g. 17.3")
-    run.add_argument("--backend", choices=["offline", "ollama"])
+    run.add_argument("--backend", choices=BACKEND_NAMES)
+    run.add_argument("--model", help="model name for the chosen backend (overrides the config file)")
     run.add_argument("--output-dir")
     run.add_argument("--fail-under", type=float, help="exit with code 1 if final coverage is below this percentage")
     run.add_argument("--apply-in-place", action="store_true",
                      help="Mode B: copy the cleanup over your sources (keeps .bak files; asks first)")
     run.add_argument("--yes", action="store_true", help="do not ask for confirmation with --apply-in-place")
+    _add_notes_flags(run)
 
     demo = sub.add_parser("demo", help="run all three modes on the bundled sample projects")
-    demo.add_argument("--backend", choices=["offline", "ollama"])
+    demo.add_argument("--backend", choices=BACKEND_NAMES)
+    demo.add_argument("--model", help="model name for the chosen backend (overrides the config file)")
     demo.add_argument("--output-dir")
+    _add_notes_flags(demo)
+
+    notes = sub.add_parser("notes", help="read the official release notes for an upgrade and show what was found")
+    notes.add_argument("--from-dbr", required=True)
+    notes.add_argument("--to-dbr", required=True)
+    notes.add_argument("--output-dir")
+    _add_notes_flags(notes)
 
     ev = sub.add_parser("evaluate", help="run the baseline evaluation on the labelled samples")
-    ev.add_argument("--backend", choices=["offline", "ollama"])
+    ev.add_argument("--backend", choices=BACKEND_NAMES)
+    ev.add_argument("--model", help="model name for the chosen backend (overrides the config file)")
     ev.add_argument("--output-dir")
     return parser
 
@@ -76,10 +106,54 @@ def _print_summary(report: dict):
 
         print(f"  coverage: existing tests {pct(c['baseline_percent'])} -> with generated tests {pct(c['after_percent'])} "
               f"-> after cleanup {pct(c.get('after_cleanup_percent'))} | target {c['target_percent']}%: {c.get('verdict')}")
+    if report.get("migration"):
+        m = report["migration"]
+        target = m["existing_tests"]["target_runtime"]
+        existing = (f"{len(m['broken_by_upgrade'])} existing tests broken by the upgrade"
+                    if target.get("status") == "ran" else f"existing tests not run ({target.get('reason')})")
+        print(f"  migration: {len(m['migrated_tests'])} new tests for {len(m['migrated_functions'])} functions | "
+              f"{existing} | {len(m['review_items'])} items to review by hand")
     if report.get("runtime_impact"):
         r = report["runtime_impact"]
         print(f"  runtime impact DBR {r['from_dbr']} -> {r['to_dbr']}: {len(r['findings'])} findings in "
               f"{len(r['impacted_files'])} files; {len(r['tests_to_review'])} test files to review")
+
+
+def _show_notes(cfg, args) -> int:
+    from .agents.base import Trace
+    from .agents.release_notes import ReleaseNotesAgent
+
+    options = _notes_options(args)
+    agent = ReleaseNotesAgent(Trace(), cfg)
+    brief = agent.build_brief(args.from_dbr, args.to_dbr, options["local_dir"], options["offline"], options["refresh"])
+    rules, advisories, review = agent.rules(brief)
+    print(f"Release notes for DBR {brief.from_version} -> {brief.to_version}")
+    for v in brief.versions:
+        print(f"  {v.version:>5} [{v.origin}] Spark {v.spark or '?'} | Python {v.environment.get('python', '?')} | "
+              f"Scala {v.environment.get('scala', '?')} | {len(v.changes)} behavioral changes")
+    for key, change in brief.env_diff().items():
+        if change["from"] != change["to"]:
+            print(f"  environment: {key}: {change['from']} -> {change['to']}")
+    print(f"  Spark migration guide items: {len(brief.guide_changes)}")
+    print(f"  rules derived: {len(rules)} | notes without a code pattern (advisories): {len(advisories)}")
+    for rule in rules:
+        shown = [n for m in rule["matchers"] for n in (m.get("names") or m.get("substrings") or [m["type"]])][:3]
+        emulate = f" | emulates {rule['emulation']['conf']}={rule['emulation']['value']}" if rule.get("emulation") else ""
+        print(f"    {rule['id']:<10} {rule['severity']:<6} {rule['title'][:70]} | matches {shown}{emulate}")
+    if advisories:
+        print("  notes with no code pattern (first 20; all are in the JSON file):")
+        for item in advisories[:20]:
+            flag = "BREAKING " if item.get("breaking") else ""
+            print(f"    {item['version']:>5} {flag}{item['title'][:90]}")
+    for warning in brief.warnings:
+        print(f"  WARNING: {warning}")
+    out = (Path(args.output_dir).resolve() if args.output_dir else cfg.output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    target = out / f"release_notes_{brief.from_version}_to_{brief.to_version}.json"
+    target.write_text(json.dumps({"brief": brief.summary(), "rules": rules, "advisories": advisories,
+                                  "review_items": review}, indent=2, default=str), encoding="utf-8")
+    print(f"  written: {target}")
+    return 0 if brief.versions else 1
 
 
 def main(argv=None) -> int:
@@ -95,7 +169,7 @@ def main(argv=None) -> int:
             return input(f"Copy cleaned versions of {count} files over your sources (.bak files are kept)? [y/N] ").strip().lower() in ("y", "yes")
 
         report = Orchestrator(cfg).run(Path(args.project), args.mode, args.from_dbr, args.to_dbr,
-                                       apply_in_place=args.apply_in_place, confirm=confirm)
+                                       apply_in_place=args.apply_in_place, confirm=confirm, notes=_notes_options(args))
         _print_summary(report)
         print(f"  outputs: {cfg.output_dir / report['project']}")
         if args.fail_under is not None:
@@ -112,11 +186,14 @@ def main(argv=None) -> int:
     if args.command == "demo":
         for name, mode, versions in (("orders_no_tests", "A", (None, None)),
                                      ("orders_with_tests", "B", (None, None)),
-                                     ("legacy_runtime", "C", ("13.3", "17.3"))):
-            report = Orchestrator(cfg).run(SAMPLES / name, mode, versions[0], versions[1])
+                                     ("orders_ansi_demo", "C", ("15.4", "17.3")),
+                                     ("legacy_runtime", "C", ("15.4", "17.3"))):
+            report = Orchestrator(cfg).run(SAMPLES / name, mode, versions[0], versions[1], notes=_notes_options(args))
             _print_summary(report)
         print(f"outputs written to {cfg.output_dir}")
         return 0
+    if args.command == "notes":
+        return _show_notes(cfg, args)
     if args.command == "evaluate":
         results = evaluate(cfg, cfg.output_dir)
         print(json.dumps(results, indent=2, default=str))

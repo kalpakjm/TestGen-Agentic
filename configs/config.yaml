@@ -2,11 +2,17 @@
 # All paths are relative to the repository root unless absolute.
 
 llm:
-  backend: offline            # offline (default, no LLM needed) | ollama (local open-weight model)
+  backend: offline            # offline (default) | ollama (local, free) | openai | gemini | anthropic (hosted, need an API key)
   ollama_url: http://localhost:11434
-  # ollama_model: qwen2.5-coder:7b
-  ollama_model: qwen2.5-coder:3b
-  timeout_s: 600
+  ollama_model: qwen2.5-coder:7b
+  # Hosted providers: set the key in an environment variable, never in this file
+  #   OPENAI_API_KEY | GEMINI_API_KEY (or GOOGLE_API_KEY) | ANTHROPIC_API_KEY
+  # These send your function source code to the provider and are billed by it. Check the model names with the provider.
+  openai_model: gpt-4o-mini
+  openai_base_url: ""         # empty = api.openai.com; any OpenAI-compatible server works (LM Studio, vLLM, Azure gateway ...)
+  gemini_model: gemini-2.5-flash
+  anthropic_model: claude-sonnet-5-5
+  timeout_s: 120
   temperature: 0.1
 
 paths:

@@ -1,89 +1,342 @@
 {
-  "_note": "Starter rule set for the baseline. Rules are illustrative and MUST be validated against the official Databricks Runtime release notes and Apache Spark migration guides before being relied on. 'introduced_in' is the first Databricks Runtime (DBR) version where the change is assumed to apply.",
+  "_note": "Rule set for the upgrade path DBR 15.4 LTS -> 17.3 LTS. 'verified' rules were checked against the official release notes on 2026-10-29 (see 'source' and 'evidence'). Rules marked verified=false are general deprecation advisories that were NOT checked against the Databricks release notes. 'introduced_in' is the first Databricks Runtime version where the change applies.",
+  "path": {
+    "from": "15.4",
+    "to": "17.3",
+    "checked_on": "2026-10-29"
+  },
   "rules": [
     {
       "id": "R001",
       "title": "Modules removed in Python 3.12 (distutils, imp)",
-      "description": "Python 3.12 removed the distutils and imp modules. Runtimes that ship Python 3.12 fail with ImportError on code that still imports them.",
-      "matchers": [{"type": "import", "names": ["distutils", "imp"]}],
-      "applies": {"type": "upgrade_range", "introduced_in": "16.0"},
+      "description": "Databricks Runtime 16.0 and above ship Python 3.12, which no longer includes the distutils and imp modules. Code that imports them fails with ImportError.",
+      "matchers": [
+        {
+          "type": "import",
+          "names": [
+            "distutils",
+            "imp"
+          ]
+        }
+      ],
+      "applies": {
+        "type": "upgrade_range",
+        "introduced_in": "16.0"
+      },
       "severity": "high",
-      "recommendation": "Replace distutils.version.LooseVersion with packaging.version.Version and imp with importlib."
+      "recommendation": "Replace distutils.version.LooseVersion with packaging.version.Version, and imp with importlib.",
+      "source": "https://docs.databricks.com/aws/en/release-notes/runtime/16.0",
+      "verified": true,
+      "evidence": "DBR 16.0 system environment lists Python 3.12.3 (15.4 LTS uses Python 3.11). The removal of distutils and imp is part of Python 3.12 itself."
     },
     {
       "id": "R002",
-      "title": "ANSI SQL mode enabled by default (Spark 4.0)",
-      "description": "With ANSI mode on, invalid casts and malformed date strings raise errors instead of returning null, and integer overflow raises an error.",
+      "title": "ANSI SQL mode is on by default (Databricks Runtime 17.0, Spark 4.0)",
+      "description": "From Databricks Runtime 17.0 the default SQL dialect is ANSI. Invalid casts, malformed date strings and integer overflow raise runtime errors instead of returning null.",
       "matchers": [
-        {"type": "cast_to", "types": ["int", "integer", "long", "bigint", "short", "smallint", "float", "double", "decimal", "date", "timestamp"]},
-        {"type": "dotted_suffix", "names": ["to_date", "to_timestamp"]}
+        {
+          "type": "cast_to",
+          "types": [
+            "int",
+            "integer",
+            "long",
+            "bigint",
+            "short",
+            "smallint",
+            "float",
+            "double",
+            "decimal",
+            "date",
+            "timestamp"
+          ]
+        },
+        {
+          "type": "dotted_suffix",
+          "names": [
+            "to_date",
+            "to_timestamp"
+          ]
+        }
       ],
-      "applies": {"type": "upgrade_range", "introduced_in": "17.0"},
+      "applies": {
+        "type": "upgrade_range",
+        "introduced_in": "17.0"
+      },
       "severity": "high",
-      "recommendation": "Use try_cast / try_to_date where dirty input is expected, or set spark.sql.ansi.enabled=false explicitly. Update tests that assert on null results for bad input."
+      "recommendation": "Validate input before casting, or use try_cast through F.expr for dirty data. To keep the old behaviour deliberately, set spark.sql.ansi.enabled to false explicitly. Update tests that expect null for bad input.",
+      "source": "https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-ansi-compliance",
+      "verified": true,
+      "evidence": "DBR 17.0 release notes list 'ANSI SQL enabled by default'; the ANSI compliance page states spark.sql.ansi.enabled defaults to true in DBR 17.0 and above and that invalid inputs throw runtime exceptions.",
+      "emulation": {
+        "conf": "spark.sql.ansi.enabled",
+        "value": "true"
+      },
+      "plugin": "ansi"
     },
     {
       "id": "R003",
       "title": "DataFrame.registerTempTable is deprecated",
       "description": "registerTempTable has been deprecated since Spark 2.0 in favour of createOrReplaceTempView.",
-      "matchers": [{"type": "dotted_suffix", "names": ["registerTempTable"]}],
-      "applies": {"type": "always"},
+      "matchers": [
+        {
+          "type": "dotted_suffix",
+          "names": [
+            "registerTempTable"
+          ]
+        }
+      ],
+      "applies": {
+        "type": "always"
+      },
       "severity": "medium",
-      "recommendation": "Use df.createOrReplaceTempView(name)."
+      "recommendation": "Use df.createOrReplaceTempView(name).",
+      "source": "",
+      "verified": false,
+      "evidence": "General deprecation advisory; not checked against the Databricks release notes."
     },
     {
       "id": "R004",
       "title": "SQLContext is deprecated",
-      "description": "SQLContext and HiveContext have been superseded by SparkSession since Spark 2.0 and are deprecated.",
+      "description": "SQLContext and HiveContext have been superseded by SparkSession since Spark 2.0.",
       "matchers": [
-        {"type": "import_from_name", "names": ["SQLContext", "HiveContext"]},
-        {"type": "name", "names": ["SQLContext", "HiveContext"]}
+        {
+          "type": "import_from_name",
+          "names": [
+            "SQLContext",
+            "HiveContext"
+          ]
+        },
+        {
+          "type": "name",
+          "names": [
+            "SQLContext",
+            "HiveContext"
+          ]
+        }
       ],
-      "applies": {"type": "always"},
+      "applies": {
+        "type": "always"
+      },
       "severity": "medium",
-      "recommendation": "Use the SparkSession (spark) object instead."
+      "recommendation": "Use the SparkSession (spark) object instead.",
+      "source": "",
+      "verified": false,
+      "evidence": "General deprecation advisory; not checked against the Databricks release notes."
     },
     {
       "id": "R005",
       "title": "PandasUDFType is deprecated",
-      "description": "Pandas UDF types (PandasUDFType.SCALAR etc.) were deprecated in Spark 3.0 in favour of Python type hints.",
+      "description": "Pandas UDF types (PandasUDFType.SCALAR and similar) were deprecated in Spark 3.0 in favour of Python type hints.",
       "matchers": [
-        {"type": "import_from_name", "names": ["PandasUDFType"]},
-        {"type": "name", "names": ["PandasUDFType"]}
+        {
+          "type": "import_from_name",
+          "names": [
+            "PandasUDFType"
+          ]
+        },
+        {
+          "type": "name",
+          "names": [
+            "PandasUDFType"
+          ]
+        }
       ],
-      "applies": {"type": "always"},
+      "applies": {
+        "type": "always"
+      },
       "severity": "medium",
-      "recommendation": "Declare the UDF with Python type hints, e.g. def f(s: pd.Series) -> pd.Series."
+      "recommendation": "Declare the UDF with Python type hints, for example def f(s: pd.Series) -> pd.Series.",
+      "source": "",
+      "verified": false,
+      "evidence": "General deprecation advisory; not checked against the Databricks release notes."
     },
     {
       "id": "R006",
       "title": "RDD API usage",
-      "description": "The RDD API is not available on all compute types (for example standard access mode clusters and serverless compute).",
-      "matchers": [{"type": "dotted_suffix", "names": [".rdd", ".sparkContext"]}],
-      "applies": {"type": "always"},
+      "description": "The RDD API is not available on every compute type (for example standard access mode clusters and serverless compute).",
+      "matchers": [
+        {
+          "type": "dotted_suffix",
+          "names": [
+            ".rdd",
+            ".sparkContext"
+          ]
+        }
+      ],
+      "applies": {
+        "type": "always"
+      },
       "severity": "medium",
-      "recommendation": "Rewrite with DataFrame operations (mapInPandas, mapPartitions equivalents) or run on a compute type that supports RDDs."
+      "recommendation": "Rewrite with DataFrame operations, or run on a compute type that supports RDDs.",
+      "source": "",
+      "verified": false,
+      "evidence": "General advisory; not checked against the Databricks release notes."
     },
     {
       "id": "R007",
       "title": "DBFS mounts",
       "description": "Mount points (dbutils.fs.mount, /mnt paths, /dbfs/mnt) are a legacy access pattern; Databricks recommends Unity Catalog volumes or external locations.",
       "matchers": [
-        {"type": "dotted_suffix", "names": ["dbutils.fs.mount", "dbutils.fs.unmount", "dbutils.fs.mounts"]},
-        {"type": "string_contains", "substrings": ["/dbfs/mnt", "dbfs:/mnt", "/mnt/"]}
+        {
+          "type": "dotted_suffix",
+          "names": [
+            "dbutils.fs.mount",
+            "dbutils.fs.unmount",
+            "dbutils.fs.mounts"
+          ]
+        },
+        {
+          "type": "string_contains",
+          "substrings": [
+            "/dbfs/mnt",
+            "dbfs:/mnt",
+            "/mnt/"
+          ]
+        }
       ],
-      "applies": {"type": "always"},
+      "applies": {
+        "type": "always"
+      },
       "severity": "medium",
-      "recommendation": "Read from Unity Catalog volumes (/Volumes/<catalog>/<schema>/<volume>) or external locations."
+      "recommendation": "Read from Unity Catalog volumes (/Volumes/<catalog>/<schema>/<volume>) or external locations.",
+      "source": "",
+      "verified": false,
+      "evidence": "General advisory; not checked against the Databricks release notes."
     },
     {
       "id": "R008",
       "title": "Legacy Spark SQL configuration flags",
       "description": "spark.sql.legacy.* flags restore old behaviour and may be removed in later Spark versions.",
-      "matchers": [{"type": "string_contains", "substrings": ["spark.sql.legacy."]}],
-      "applies": {"type": "always"},
+      "matchers": [
+        {
+          "type": "string_contains",
+          "substrings": [
+            "spark.sql.legacy."
+          ]
+        }
+      ],
+      "applies": {
+        "type": "always"
+      },
       "severity": "low",
-      "recommendation": "Remove the flag and fix the code for the new behaviour, or document why it is still needed."
+      "recommendation": "Remove the flag and fix the code for the new behaviour, or document why it is still needed.",
+      "source": "",
+      "verified": false,
+      "evidence": "General advisory; not checked against the Databricks release notes."
+    },
+    {
+      "id": "R009",
+      "title": "input_file_name function is no longer supported (Databricks Runtime 17.3 LTS)",
+      "description": "input_file_name has been deprecated since Databricks Runtime 13.3 LTS because it is unreliable, and it is no longer supported in 17.3 LTS and above.",
+      "matchers": [
+        {
+          "type": "dotted_suffix",
+          "names": [
+            "input_file_name"
+          ]
+        }
+      ],
+      "applies": {
+        "type": "upgrade_range",
+        "introduced_in": "17.3"
+      },
+      "severity": "high",
+      "recommendation": "Read the file path from the _metadata column (for example _metadata.file_path) instead. Confirm the exact replacement in the Databricks documentation for your data source.",
+      "source": "https://docs.databricks.com/aws/en/release-notes/runtime/17.3lts",
+      "verified": true,
+      "evidence": "DBR 17.3 LTS release notes, behavioral changes: the function is no longer supported."
+    },
+    {
+      "id": "R010",
+      "title": "Auto Loader incremental listing default changed (Databricks Runtime 17.3 LTS)",
+      "description": "The default of the deprecated cloudFiles.useIncrementalListing option changed from auto to false, so Auto Loader now performs full directory listings.",
+      "matchers": [
+        {
+          "type": "string_contains",
+          "substrings": [
+            "cloudFiles"
+          ]
+        }
+      ],
+      "applies": {
+        "type": "upgrade_range",
+        "introduced_in": "17.3"
+      },
+      "severity": "medium",
+      "recommendation": "Review Auto Loader streams that relied on incremental listing. To keep the previous behaviour set cloudFiles.useIncrementalListing to auto explicitly, or migrate to file events.",
+      "source": "https://docs.databricks.com/aws/en/release-notes/runtime/17.3lts",
+      "verified": true,
+      "evidence": "DBR 17.3 LTS release notes, behavioral changes."
+    },
+    {
+      "id": "R011",
+      "title": "pandas API on Spark methods removed in Spark 4.0 (Databricks Runtime 17.0)",
+      "description": "Spark 4.0 removed several pandas API on Spark members, including DataFrame.iteritems, Series.iteritems, DataFrame.to_koalas, DataFrame.to_pandas_on_spark and the .koalas accessor.",
+      "matchers": [
+        {
+          "type": "dotted_suffix",
+          "names": [
+            ".iteritems",
+            ".to_koalas",
+            ".to_pandas_on_spark",
+            ".koalas"
+          ]
+        }
+      ],
+      "applies": {
+        "type": "upgrade_range",
+        "introduced_in": "17.0"
+      },
+      "severity": "medium",
+      "recommendation": "Use items instead of iteritems, and pandas_api instead of to_koalas and to_pandas_on_spark. Note that .iteritems also matches plain pandas code, so check what the object is.",
+      "source": "https://spark.apache.org/docs/latest/api/python/migration_guide/pyspark_upgrade.html",
+      "verified": true,
+      "evidence": "PySpark migration guide, upgrading from 3.5 to 4.0. DBR 17.0 ships Spark 4.0.0."
+    },
+    {
+      "id": "R012",
+      "title": "pandas API on Spark and ANSI mode (Databricks Runtime 17.0 and 17.2)",
+      "description": "pandas API on Spark behaves differently when ANSI mode is on. In Spark 4.0 it raises an exception unless a compatibility option is set, and Databricks Runtime 17.2 enables ANSI support for it by default.",
+      "matchers": [
+        {
+          "type": "import_module",
+          "names": [
+            "pyspark.pandas",
+            "databricks.koalas"
+          ]
+        }
+      ],
+      "applies": {
+        "type": "upgrade_range",
+        "introduced_in": "17.0"
+      },
+      "severity": "medium",
+      "recommendation": "Test pandas API on Spark code with ANSI mode on. Review the compute.ansi_mode_support and compute.fail_on_ansi_mode options.",
+      "source": "https://docs.databricks.com/gcp/en/release-notes/runtime/17.2",
+      "verified": true,
+      "evidence": "PySpark 3.5 to 4.0 migration guide and DBR 17.2 release notes ('ANSI mode enabled by default for Pandas API on Spark')."
+    },
+    {
+      "id": "R013",
+      "title": "Scala 2.13 replaces Scala 2.12 (Databricks Runtime 17.0)",
+      "description": "Databricks Runtime 17.0 and above use Scala 2.13, while 15.4 LTS uses Scala 2.12. Libraries built for Scala 2.12 (artifact names ending in _2.12) cannot be loaded.",
+      "matchers": [
+        {
+          "type": "string_contains",
+          "substrings": [
+            "_2.12"
+          ]
+        }
+      ],
+      "applies": {
+        "type": "upgrade_range",
+        "introduced_in": "17.0"
+      },
+      "severity": "high",
+      "recommendation": "Use the _2.13 build of each Maven coordinate and test the job on the new runtime.",
+      "source": "https://learn.microsoft.com/en-us/azure/databricks/release-notes/runtime/17.0",
+      "verified": true,
+      "evidence": "DBR 17.0 system environment lists Scala 2.13.16; DBR 15.4 LTS and 16.x list Scala 2.12.15."
     }
   ]
 }

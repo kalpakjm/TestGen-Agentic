@@ -10,6 +10,7 @@ All data in this repository was written by the project author for this project a
 | `sample_projects/orders_no_tests/` | PySpark code with **no tests** (Mode A input): 5 modules and 1 notebook. |
 | `sample_projects/orders_with_tests/` | The same code with a **partial test suite**, three unused helper functions and one stale test (Mode B input). |
 | `sample_projects/legacy_runtime/` | Code and notebooks written for an old runtime (Mode C input): 2 modules, 1 `.ipynb` notebook and 1 Databricks-format `.py` notebook. |
+| `sample_projects/orders_ansi_demo/` | The orders code plus a test that relies on a bad cast returning null. Mode C test migration input (DBR 15.4 to 17.3). |
 | `labels/*.json` | Hand-written ground truth used by the evaluation. Written from reading the sample code, not produced by the agents. |
 
 ## Using your own code

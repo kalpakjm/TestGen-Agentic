@@ -11,7 +11,9 @@
 | Execution and verification | Syntax-checks tests, runs pytest with coverage, parses results, triggers repair | No |
 | Obsolete-code | Dead functions (no references in non-test code), stale test imports; writes cleaned copies | No |
 | Coverage-gap | Functions without tests; functions with uncovered lines when coverage data exists | No |
-| Runtime-impact | Matches code against runtime rules for the chosen DBR range; lists impacted notebooks, modules and tests | No (rules); planned for migration |
+| Release notes | For an upgrade (from, to), fetches and parses the official runtime release notes and Spark migration guides, reads the environment and behavioral changes, and derives detection rules | No (optional model help planned) |
+| Runtime-impact | Matches code against runtime rules for the chosen DBR range; lists impacted notebooks, modules and tests | No |
+| Migration | Runs existing tests under an emulation of the target runtime, writes migrated tests for the ANSI-mode change, lists other findings for manual review, optionally asks the model to rewrite broken tests | Optional (proposals only) |
 
 The baseline puts the LLM only where judgement and language matter (test bodies, repairs, later migration). Everything that can be decided exactly is decided by code, which keeps runs reproducible and makes the LLM's output checkable.
 

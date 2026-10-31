@@ -49,7 +49,9 @@ class VerifierAgent(Agent):
             return False, "missing: " + ", ".join(missing) + " (install requirements.txt and a JDK to enable test execution)"
         return True, ""
 
-    def run_tests(self, paths, source_roots, extra_paths, work_dir: Path, label: str) -> dict:
+    def run_tests(self, paths, source_roots, extra_paths, work_dir: Path, label: str, extra_env=None) -> dict:
+        if not paths:
+            return {"status": "skipped", "reason": "no tests to run", "label": label}
         can_run, reason = self.dynamic_status()
         if not can_run:
             self.log("test run skipped", label=label, reason=reason)
@@ -66,6 +68,7 @@ class VerifierAgent(Agent):
         env["PTAGENT_PYTHONPATH"] = os.pathsep.join(python_paths)
         env["COVERAGE_FILE"] = str(cov_data)
         env.setdefault("PYSPARK_PYTHON", sys.executable)
+        env.update(extra_env or {})
         cmd = [
             sys.executable, "-m", "coverage", "run", "--branch",
             "--source=" + ",".join(str(r) for r in source_roots),

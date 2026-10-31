@@ -17,6 +17,12 @@ from .base import Agent
 from .test_generator import remove_functions
 
 
+def read_raw(path: Path) -> str:
+    """Read a text file without translating line endings (so CRLF files stay CRLF)."""
+    with open(path, "r", encoding="utf-8", newline="") as handle:
+        return handle.read()
+
+
 class ObsoleteCodeAgent(Agent):
     name = "obsolete_code"
 
@@ -121,25 +127,31 @@ class ObsoleteCodeAgent(Agent):
             entry["tests"].update(item["tests"])
 
         for rel, names in dead_by_file.items():
-            original = (index.root / rel).read_text(encoding="utf-8")
-            cleaned = remove_functions(original, names)
+            original = read_raw(index.root / rel)
+            cleaned = remove_functions(original.replace("\r\n", "\n"), names)
             written.append({"file": rel, "removed": sorted(names)})
             self._record(refactored / rel, original, cleaned, rel, diffs)
         for rel, entry in stale_by_file.items():
-            original = (index.root / rel).read_text(encoding="utf-8")
-            cleaned = self._drop_imports(remove_functions(original, entry["tests"]), entry["names"])
+            original = read_raw(index.root / rel)
+            cleaned = self._drop_imports(remove_functions(original.replace("\r\n", "\n"), entry["tests"]),
+                                         entry["names"])
             written.append({"file": rel, "removed": sorted(entry["tests"]) + [f"import {n}" for n in sorted(entry["names"])]})
             self._record(refactored / rel, original, cleaned, rel, diffs)
         if diffs:
-            patch_file.write_text("".join(diffs), encoding="utf-8")
+            with open(patch_file, "w", encoding="utf-8", newline="") as handle:
+                handle.write("".join(diffs))
         for item in written:
             self.log("wrote cleaned copy", **item)
         return written
 
     @staticmethod
     def _record(path: Path, original: str, cleaned: str, rel: str, diffs: list):
+        """Write the cleaned file and its diff, keeping the original line endings (LF or CRLF)."""
+        eol = "\r\n" if "\r\n" in original else "\n"
+        cleaned = cleaned.replace("\r\n", "\n").replace("\n", eol)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(cleaned, encoding="utf-8")
+        with open(path, "w", encoding="utf-8", newline="") as handle:
+            handle.write(cleaned)
         diffs.extend(difflib.unified_diff(
             original.splitlines(keepends=True), cleaned.splitlines(keepends=True),
             fromfile=f"a/{rel}", tofile=f"b/{rel}"))

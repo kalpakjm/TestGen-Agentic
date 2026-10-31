@@ -12,9 +12,7 @@ from ..tools.notebooks import load_ipynb_cells, sanitize_cell
 from .base import Agent
 
 
-def parse_version(text: str) -> tuple:
-    numbers = [int(n) for n in re.findall(r"\d+", str(text))][:2]
-    return tuple(numbers + [0] * (2 - len(numbers)))
+from ..tools.versions import parse_version  # noqa: E402  (re-exported for callers)
 
 
 def dotted(node) -> str:
@@ -34,6 +32,18 @@ def matches(node, matcher: dict) -> bool:
         if isinstance(node, ast.ImportFrom):
             return bool(node.module) and node.level == 0 and node.module.split(".")[0] in names
         return False
+    if kind == "import_module":
+        def hit(module):
+            return any(module == n or module.startswith(n + ".") for n in matcher["names"])
+
+        if isinstance(node, ast.Import):
+            return any(hit(a.name) for a in node.names)
+        if isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+            return hit(node.module) or any(hit(f"{node.module}.{a.name}") for a in node.names)
+        return False
+    if kind == "import_from":
+        return (isinstance(node, ast.ImportFrom) and node.level == 0 and node.module == matcher["module"]
+                and any(a.name in matcher["names"] for a in node.names))
     if kind == "import_from_name":
         return isinstance(node, ast.ImportFrom) and any(a.name in matcher["names"] for a in node.names)
     if kind == "name":
@@ -66,10 +76,13 @@ class RuntimeImpactAgent(Agent):
         self.kb = kb
         self.rules = json.loads(Path(cfg.dbr_rules_path).read_text(encoding="utf-8"))["rules"]
 
-    def _applicable_rules(self, from_dbr: str, to_dbr: str) -> list:
+    def load_curated(self) -> list:
+        return list(self.rules)
+
+    def _applicable_rules(self, from_dbr: str, to_dbr: str, rules=None) -> list:
         lower, upper = parse_version(from_dbr), parse_version(to_dbr)
         chosen = []
-        for rule in self.rules:
+        for rule in (self.rules if rules is None else rules):
             applies = rule["applies"]
             if applies["type"] == "always":
                 chosen.append((rule, "always (deprecated or restricted API)"))
@@ -89,8 +102,8 @@ class RuntimeImpactAgent(Agent):
             return lines
         return {None: path.read_text(encoding="utf-8").splitlines()}
 
-    def analyze(self, index, from_dbr: str, to_dbr: str) -> dict:
-        rules = self._applicable_rules(from_dbr, to_dbr)
+    def analyze(self, index, from_dbr: str, to_dbr: str, rules=None) -> dict:
+        rules = self._applicable_rules(from_dbr, to_dbr, rules)
         test_rels = {index.rel(p) for p in index.test_files}
         findings, seen = [], set()
         for rel, trees in index.trees.items():
@@ -123,7 +136,8 @@ class RuntimeImpactAgent(Agent):
                  impacted_files=len(impacted_files), impacted_tests=len(impacted_tests))
         return {
             "from_dbr": from_dbr, "to_dbr": to_dbr,
-            "rules_checked": [{"id": r["id"], "title": r["title"], "reason": why} for r, why in rules],
+            "rules_checked": [{"id": r["id"], "title": r["title"], "reason": why, "origin": r.get("origin", "curated"),
+                               **({"emulation": r["emulation"]} if r.get("emulation") else {})} for r, why in rules],
             "findings": [f.__dict__ for f in findings],
             "impacted_files": impacted_files,
             "impacted_notebooks": [f for f in impacted_files if f.endswith(".ipynb") or f in {index.rel(n) for n in index.notebooks}],

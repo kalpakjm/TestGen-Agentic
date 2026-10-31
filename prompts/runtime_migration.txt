@@ -1,16 +1,24 @@
-PLANNED FOR THE FINAL SUBMISSION (not used by the baseline).
+A Databricks Runtime upgrade from $from_dbr to $to_dbr changes behaviour covered by rule $rule_id: $rule_description
 
-A Databricks Runtime upgrade from $from_dbr to $to_dbr changes behaviour covered by rule $rule_id:
-$rule_description
-
-AFFECTED CODE
+CODE AFFECTED BY THE CHANGE
 ```python
 $code
 ```
 
-EXISTING TESTS THAT IMPORT THIS CODE
+THIS EXISTING TEST PASSES TODAY BUT FAILS ON THE NEW RUNTIME
 ```python
 $tests
 ```
 
-Rewrite the tests so that they assert the new behaviour. Code migration is an optional add-on: only propose a code change if asked, and show it as a diff.
+FAILURE ON THE NEW RUNTIME
+```
+$failure
+```
+
+TASK
+Rewrite ONLY this test so that it asserts the behaviour of the new runtime. For ANSI mode this usually means: a value that cannot be parsed or cast now raises an exception, so use `with pytest.raises(Exception):` around the call and the `.collect()`, or change the input so that it is valid.
+Rules:
+- Keep the same `spark` fixture argument and the same input data style.
+- Do not delete the assertion or replace it with a trivial one.
+- Do not change the code under test.
+- Return ONLY the corrected test function as Python code: no imports, no explanations.

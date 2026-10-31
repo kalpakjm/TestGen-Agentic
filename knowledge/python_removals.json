@@ -1,0 +1,25 @@
+{
+  "_note": "Modules and functions that each Python release removed. The Python version of a Databricks Runtime is read from its release notes; the rules for the versions an upgrade crosses are then generated from this table. Taken from the 'What's New' pages of each Python release; not fetched at run time.",
+  "versions": {
+    "3.9": {
+      "attributes": ["base64.encodestring", "base64.decodestring", "fractions.gcd", ".isAlive"]
+    },
+    "3.10": {
+      "from_imports": [{"module": "collections", "names": ["Mapping", "MutableMapping", "Sequence", "MutableSequence", "Set", "MutableSet", "Iterable", "Iterator", "Callable", "Hashable", "Sized", "Container", "Collection", "Generator", "KeysView", "ItemsView", "ValuesView"]}],
+      "attributes": ["collections.Mapping", "collections.MutableMapping", "collections.Sequence", "collections.Iterable", "collections.Callable", "collections.Set", "collections.MutableSet", "collections.Iterator", "collections.Hashable", "collections.Sized", "collections.Container"]
+    },
+    "3.11": {
+      "imports": ["binhex"],
+      "attributes": ["inspect.getargspec", "asyncio.coroutine"]
+    },
+    "3.12": {
+      "imports": ["distutils", "imp", "asynchat", "asyncore", "smtpd"],
+      "from_imports": [{"module": "configparser", "names": ["SafeConfigParser"]}],
+      "attributes": [".assertEquals", ".assertNotEquals", ".assertRegexpMatches", ".assertNotRegexpMatches", ".assertRaisesRegexp", ".assertAlmostEquals", ".assertNotAlmostEquals", ".failUnless", ".failIf", "ssl.wrap_socket", "configparser.SafeConfigParser"]
+    },
+    "3.13": {
+      "imports": ["aifc", "audioop", "cgi", "cgitb", "chunk", "crypt", "imghdr", "mailcap", "msilib", "nis", "nntplib", "ossaudiodev", "pipes", "sndhdr", "spwd", "sunau", "telnetlib", "uu", "xdrlib", "lib2to3"],
+      "attributes": ["locale.resetlocale"]
+    }
+  }
+}

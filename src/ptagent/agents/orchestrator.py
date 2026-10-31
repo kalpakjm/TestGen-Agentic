@@ -15,6 +15,9 @@ from ..llm import build_backend
 from .base import Agent, Trace
 from .coverage_gap import CoverageGapAgent
 from .ingestion import IngestionAgent
+from .migration import MigrationAgent
+from .migration_plugins import plugin_rules
+from .release_notes import ReleaseNotesAgent
 from .obsolete_code import ObsoleteCodeAgent
 from .runtime_impact import RuntimeImpactAgent
 from .test_generator import TestGeneratorAgent
@@ -35,10 +38,12 @@ class Orchestrator(Agent):
         self.obsolete = ObsoleteCodeAgent(self.trace, cfg)
         self.gaps = CoverageGapAgent(self.trace)
         self.impact = RuntimeImpactAgent(self.trace, cfg, self.kb)
+        self.notes = ReleaseNotesAgent(self.trace, cfg)
+        self.migration = MigrationAgent(self.trace, cfg, self.generator, self.verifier, self.backend)
 
     # ------------------------------------------------------------------ routing
     def run(self, project_dir, mode="auto", from_dbr=None, to_dbr=None, out_root=None,
-            apply_in_place=False, confirm=None) -> dict:
+            apply_in_place=False, confirm=None, notes=None) -> dict:
         index = self.ingestion.run(project_dir)
         out_dir = Path(out_root or self.cfg.output_dir) / index.name
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -70,11 +75,42 @@ class Orchestrator(Agent):
         elif resolved == "B":
             report.update(self._mode_b(index, out_dir, apply_in_place, confirm))
         if upgrade_requested:
-            report["runtime_impact"] = self.impact.analyze(
-                index, from_dbr or self.cfg.from_dbr, to_dbr or self.cfg.to_dbr)
+            frm, to = from_dbr or self.cfg.from_dbr, to_dbr or self.cfg.to_dbr
+            rules, brief, advisories, review_extra = self._rules_for(frm, to, out_dir, notes or {})
+            report["upgrade_brief"] = brief
+            report["release_note_advisories"] = advisories
+            report["runtime_impact"] = self.impact.analyze(index, frm, to, rules=rules)
+            report["migration"] = self.migration.run(index, report["runtime_impact"], out_dir, rules, review_extra)
 
         self._write_reports(report, out_dir)
         return report
+
+    # ------------------------------------------------------------------ mode C: rules from the release notes
+    def _rules_for(self, frm: str, to: str, out_dir: Path, options: dict):
+        """Rules for the upgrade: read from the official release notes, from the curated file, or both."""
+        mode = options.get("rules") or self.cfg.rules_mode
+        rules, advisories, review_extra, summary = [], [], [], {"mode": mode, "warnings": []}
+        if mode in ("dynamic", "both"):
+            brief = self.notes.build_brief(frm, to, options.get("local_dir"), bool(options.get("offline")),
+                                           bool(options.get("refresh")))
+            summary.update(brief.summary())
+            if brief.versions:
+                rules, advisories, review_extra = self.notes.rules(brief)
+            elif mode == "dynamic":
+                summary["warnings"].append("Falling back to the curated rule file (written for DBR 15.4 to 17.3), "
+                                           "because no release notes could be read.")
+                mode = "curated"
+        if mode in ("curated", "both"):
+            curated = self.impact.load_curated()
+            known = {json.dumps(r["matchers"], sort_keys=True) for r in rules}
+            rules += [r for r in curated if json.dumps(r["matchers"], sort_keys=True) not in known]
+        rules += plugin_rules(rules)
+        summary["rules_used"] = len(rules)
+        (out_dir / "upgrade_brief.json").write_text(json.dumps(summary, indent=2, default=str), encoding="utf-8")
+        (out_dir / "generated_rules.json").write_text(json.dumps({"rules": rules, "advisories": advisories}, indent=2),
+                                                      encoding="utf-8")
+        self.log("rules ready", mode=mode, rules=len(rules), advisories=len(advisories))
+        return rules, summary, advisories, review_extra
 
     # ------------------------------------------------------------------ mode B
     def _mode_b(self, index, out_dir, apply_in_place=False, confirm=None) -> dict:
@@ -279,6 +315,19 @@ def render_markdown(report: dict) -> str:
                   f"plus generated tests {coverage['after_percent']}%, "
                   f"after cleanup {coverage.get('after_cleanup_percent')}%",
                   f"- Target {coverage['target_percent']}%: **{coverage.get('verdict')}**", ""]
+    brief = report.get("upgrade_brief")
+    if brief:
+        lines += ["## Release notes read", "", f"- Rules from: {brief.get('mode')}; {brief.get('rules_used', 0)} rules in use"]
+        for v in brief.get("versions", []):
+            lines.append(f"- DBR {v['version']} ({v['origin']}): Spark {v['spark'] or '?'}, "
+                         f"Python {v['environment'].get('python', '?')}, Scala {v['environment'].get('scala', '?')}, "
+                         f"{v['behavioral_changes']} behavioral changes")
+        for key, change in brief.get("environment_changes", {}).items():
+            if change["from"] != change["to"]:
+                lines.append(f"- Environment: {key} {change['from']} -> {change['to']}")
+        for warning in brief.get("warnings", []):
+            lines.append(f"- WARNING: {warning}")
+        lines.append("")
     impact = report.get("runtime_impact")
     if impact:
         lines += [f"## Runtime impact (DBR {impact['from_dbr']} to {impact['to_dbr']})", "",
@@ -286,5 +335,26 @@ def render_markdown(report: dict) -> str:
                   f"- Tests to review: {len(impact['tests_to_review'])}", ""]
         for f in impact["findings"]:
             lines.append(f"  - {f['rule_id']} {f['file']} {f['location']}: {f['title']}")
+        lines.append("")
+    migration = report.get("migration")
+    if migration:
+        lines += ["## Test migration", "", f"- Emulation: {migration['emulation']}",
+                  f"- Functions with ANSI-sensitive code: {len(migration['ansi_functions'])}; "
+                  f"migrated tests written: {len(migration['migrated_tests'])} "
+                  f"in {len(migration['migrated_test_files'])} files"]
+        target = migration["existing_tests"]["target_runtime"]
+        if target.get("status") == "ran":
+            lines.append(f"- Existing tests under the target runtime: {target['passed']} passed, "
+                         f"{target['failed']} failed, {target['errors']} errors")
+        else:
+            lines.append(f"- Existing tests under the target runtime: {target.get('status')} ({target.get('reason', '')})")
+        for b in migration["broken_by_upgrade"]:
+            lines.append(f"  - broken by the upgrade: `{b['test']}`")
+        run = migration.get("migrated_run")
+        if run:
+            lines.append(f"- Migrated tests: {run.get('status')}"
+                         + (f", {run['passed']} passed, {run['failed']} failed, {run['errors']} errors" if run.get("status") == "ran" else ""))
+        for item in migration["review_items"]:
+            lines.append(f"- Review {item['rule']}: {item['title']} ({', '.join(item['files'])})")
         lines.append("")
     return "\n".join(lines) + "\n"

@@ -1,0 +1,25 @@
+{
+  "findings": [
+    [
+      "src/orders_etl/cleaning.py",
+      "R002",
+      "L11"
+    ],
+    [
+      "src/orders_etl/cleaning.py",
+      "R002",
+      "L12"
+    ],
+    [
+      "src/orders_etl/cleaning.py",
+      "R002",
+      "L13"
+    ]
+  ],
+  "migrated_functions": [
+    "orders_etl.cleaning.clean_orders"
+  ],
+  "broken_tests": [
+    "test_clean_orders_turns_an_unparseable_quantity_into_null"
+  ]
+}

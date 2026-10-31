@@ -93,6 +93,30 @@ class ProtectionTests(unittest.TestCase):
         self.assertEqual((self.root / "src/pkg/core.py.bak").read_text(), original)
 
 
+class LineEndingTests(unittest.TestCase):
+    def test_patch_keeps_crlf_line_endings_and_applies_to_crlf_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "proj"
+            write_project(root)
+            for path in root.rglob("*.py"):  # convert the project to Windows line endings
+                path.write_bytes(path.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n"))
+            cfg = load_config()
+            index = build_index(root, cfg.skip_dirs)
+            agent = ObsoleteCodeAgent(Trace(), cfg)
+            report = agent.analyze(index)
+            out = Path(tmp) / "out"
+            agent.apply(index, report, out)
+            patch_bytes = (out / "cleanup.patch").read_bytes()
+            self.assertIn(b"-def truly_dead():\r\n", patch_bytes)
+            cleaned = (out / "refactored/src/pkg/core.py").read_bytes()
+            self.assertNotIn(b"truly_dead", cleaned)
+            self.assertNotIn(b"\n", cleaned.replace(b"\r\n", b""))  # no bare LF left
+            if shutil.which("patch"):
+                result = subprocess.run(["patch", "-p1", "--dry-run", "-i", str(out / "cleanup.patch")],
+                                        cwd=root, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+
 class ConftestPathTests(unittest.TestCase):
     def test_paths_from_ptagent_take_priority_over_defaults_even_if_already_on_sys_path(self):
         import os

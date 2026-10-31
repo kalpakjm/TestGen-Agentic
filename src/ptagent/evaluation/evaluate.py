@@ -54,11 +54,27 @@ def evaluate(cfg, out_root: Path) -> dict:
 
     # Mode C: runtime impact detection
     labels = _labels("legacy_runtime")
-    report = Orchestrator(cfg).run(SAMPLES / "legacy_runtime", mode="C", from_dbr="13.3", to_dbr="17.3", out_root=out_root)
+    report = Orchestrator(cfg).run(SAMPLES / "legacy_runtime", mode="C", from_dbr="15.4", to_dbr="17.3", out_root=out_root,
+                                                notes={"rules": "curated"})
     found = {(f["file"], f["rule_id"], f["location"]) for f in report["runtime_impact"]["findings"]}
     results["mode_c_runtime_impact"] = {
         "findings": precision_recall(found, {tuple(x) for x in labels["findings"]}),
         "impacted_files": precision_recall(set(report["runtime_impact"]["impacted_files"]), set(labels["impacted_files"])),
+    }
+
+    # Mode C: test migration on the ANSI demo project
+    labels = _labels("orders_ansi_demo")
+    report = Orchestrator(cfg).run(SAMPLES / "orders_ansi_demo", mode="C", from_dbr="15.4", to_dbr="17.3", out_root=out_root,
+                                                notes={"rules": "curated"})
+    migration = report["migration"]
+    target = migration["existing_tests"]["target_runtime"]
+    results["mode_c_migration"] = {
+        "findings": precision_recall({(f["file"], f["rule_id"], f["location"]) for f in report["runtime_impact"]["findings"]},
+                                     {tuple(x) for x in labels["findings"]}),
+        "migrated_functions": precision_recall(set(migration["migrated_functions"]), set(labels["migrated_functions"])),
+        "tests_broken_by_upgrade": (precision_recall({b["test"] for b in migration["broken_by_upgrade"]}, set(labels["broken_tests"]))
+                                    if target.get("status") == "ran" else {"status": target.get("status"), "reason": target.get("reason")}),
+        "migrated_run": _execution_summary(migration.get("migrated_run", {"status": "skipped", "reason": "no migrated tests"})),
     }
 
     (out_root / "evaluation_report.json").write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -74,6 +90,7 @@ def _execution_summary(execution: dict) -> dict:
 
 def render(results: dict) -> str:
     a, b, c = results["mode_a_generation"], results["mode_b_maintenance"], results["mode_c_runtime_impact"]
+    m = results["mode_c_migration"]
     lines = ["# Baseline evaluation", "", f"LLM backend: {results['llm_backend']}", "",
              "## Mode A: test generation (orders_no_tests)", "",
              f"- Eligibility precision/recall: {a['eligibility']['precision']} / {a['eligibility']['recall']}",
@@ -86,7 +103,12 @@ def render(results: dict) -> str:
              f"- Untested functions P/R: {b['untested_functions']['precision']} / {b['untested_functions']['recall']}",
              f"- Coverage: {b['coverage']}",
              f"- Execution: {b['execution']}", "",
-             "## Mode C: runtime impact (legacy_runtime, DBR 13.3 to 17.3)", "",
+             "## Mode C: runtime impact (legacy_runtime, DBR 15.4 to 17.3)", "",
              f"- Findings P/R: {c['findings']['precision']} / {c['findings']['recall']}",
-             f"- Impacted files P/R: {c['impacted_files']['precision']} / {c['impacted_files']['recall']}", ""]
+             f"- Impacted files P/R: {c['impacted_files']['precision']} / {c['impacted_files']['recall']}", "",
+             "## Mode C: test migration (orders_ansi_demo)", "",
+             f"- ANSI findings P/R: {m['findings']['precision']} / {m['findings']['recall']}",
+             f"- Functions given migrated tests P/R: {m['migrated_functions']['precision']} / {m['migrated_functions']['recall']}",
+             f"- Existing tests broken by the upgrade: {m['tests_broken_by_upgrade']}",
+             f"- Migrated tests run: {m['migrated_run']}", ""]
     return "\n".join(lines)
