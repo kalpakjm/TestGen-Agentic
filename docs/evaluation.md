@@ -114,7 +114,7 @@ the unparseable quantity becomes NULL, which fails under ANSI exactly like the o
 was saved as UNVERIFIED and not used, as designed. The template-based migrated tests are the reliable part of Mode C;
 the 3B model added nothing on this task.
 
-### Tool defects found by the real repositories (all fixed)
+### Tool defects found by the real repositories and CI (all fixed)
 The sample projects did not show any of these.
 
 | # | Defect | Found on | Fix |
@@ -128,6 +128,10 @@ The sample projects did not show any of these.
 | 7 | The determinism template compared objects without value equality (`ArgumentParser`) | databricks-template | Patch 22: compare `repr` for such objects |
 | 8 | Generated tests from an earlier run into the same folder were run again and escaped quarantine | databricks-template | Patch 22/23: repeated quarantine; old files removed at the start of a run |
 | 9 | Mode C missed division by zero under ANSI | databricks-medallion-pipeline | Patch 24: rule `P-ANSI-DIV` (review only) |
+| 10 | Writing the generated `conftest.py` crashed when the project and the output folder were on different Windows drives (no relative path between drives) | GitHub Actions Windows runner (repository on D:, temporary folders on C:) | Patch 30: absolute path when no relative path exists |
+
+### Continuous integration
+The unit tests run on GitHub Actions on Ubuntu and Windows with Python 3.11 and 3.12 (`.github/workflows/tests.yml`); failing tests are shown as annotations on the run. The Windows runner found defect 10 above. It also showed that two tests relied on the `patch` program, whose Windows build on the runner (GNU patch 2.5.9 from Strawberry Perl) crashes on valid patches; those tests now check the cleanup patch with `git apply --check`.
 
 ### Limitations shown by this evaluation
 - Coverage targets were not reached on the larger repository (19.9-20.4% against 80%): 56 functions were skipped (entry points,
