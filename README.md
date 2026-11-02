@@ -48,13 +48,24 @@ All sample code and data were written by the author for this project and are rel
 ```
 
 ## Installation
-Requirements: Python 3.10 or 3.11 (3.12 works with the `setuptools` pin in `requirements.txt`), and Java 11 or 17 (Java 17 recommended) for running Spark. Linux, macOS or WSL are recommended; native Windows needs extra Hadoop setup.
+Requirements: Python 3.11 recommended (it matches DBR 15.4; 3.10 and 3.12 also work), and Java 17 (11 works) for running Spark.
+Linux, macOS and WSL need nothing else. Native Windows also needs `winutils.exe` and `hadoop.dll` for Hadoop 3 in `%HADOOP_HOME%\bin`.
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+source .venv/bin/activate          # Windows (cmd): .venv\Scripts\activate
 pip install -r requirements.txt
 ```
+
+Or install it as a package, which also adds a `ptagent` command (`ptagent run ...` is the same as `python run.py run ...`):
+```bash
+pip install -e ".[spark]"          # the tool plus PySpark
+pip install -e ".[spark,eval]"     # also the pins needed to run some real projects (see docs/evaluation.md)
+```
+Use the editable install (`-e`): the tool reads `configs/`, `knowledge/`, `prompts/` and `data/` from this folder.
+With a regular install, run it from this folder or set `PTAGENT_HOME` to it.
+
+Do not set `PYSPARK_PYTHON` to another Python: the tool starts Spark's workers with its own interpreter.
 
 Optional, to produce the Parquet version of the sample data:
 ```bash

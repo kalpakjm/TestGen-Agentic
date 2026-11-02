@@ -122,7 +122,7 @@ class Orchestrator(Agent):
         entry_points = {fn.qualname for fn in index.functions if fn.name in self.cfg.entry_point_names}
         existing_dirs = sorted({p.parent for p in index.test_files})
 
-        baseline = self.verifier.run_tests(existing_dirs, index.source_roots, [], out_dir, "baseline")
+        baseline = self.verifier.run_tests(existing_dirs, index.source_roots, [], out_dir, "baseline", cwd=index.root)
         gaps = self.gaps.analyze(index, baseline if baseline.get("status") == "ran" else None,
                                  exclude=dead | entry_points)
         targets = [fn for fn in index.functions if fn.qualname in set(gaps["targets"])]
@@ -138,7 +138,7 @@ class Orchestrator(Agent):
             extracted = out_dir / "extracted"
             cleaned_run = self.verifier.run_tests(
                 cleaned_existing + [out_dir / "generated_tests"], cleaned_roots,
-                [extracted] if extracted.exists() else [], out_dir, "cleaned")
+                [extracted] if extracted.exists() else [], out_dir, "cleaned", cwd=cleaned_root)
 
         after = generation["execution"].get("coverage_percent")
         after_cleanup = cleaned_run.get("coverage_percent") if cleaned_run and cleaned_run.get("status") == "ran" else None
@@ -198,7 +198,7 @@ class Orchestrator(Agent):
         extracted = out_dir / "extracted"
         extra = [extracted] if extracted.exists() else []
         paths = list(existing_dirs) + [out_dir / "generated_tests"]
-        execution = self.verifier.run_tests(paths, index.source_roots, extra, out_dir, "after")
+        execution = self.verifier.run_tests(paths, index.source_roots, extra, out_dir, "after", cwd=index.root)
         repairs, attempts, warnings, previous = [], 0, [], None
         while execution.get("status") == "ran" and attempts < self.cfg.max_repair_attempts:
             # Only assertion/call failures can be repaired. Errors (fixture setup, imports) point at the
@@ -216,14 +216,21 @@ class Orchestrator(Agent):
             if not actions:
                 break
             repairs.extend(actions)
-            execution = self.verifier.run_tests(paths, index.source_roots, extra, out_dir, "after")
-        if execution.get("status") == "ran":
+            execution = self.verifier.run_tests(paths, index.source_roots, extra, out_dir, "after", cwd=index.root)
+        # Quarantine whatever generated tests still fail. A rerun can reveal failures that were hidden before
+        # (for example a test file that only starts collecting once another one is removed), so repeat a few times.
+        for _ in range(3):
+            if execution.get("status") != "ran":
+                break
             leftover = {f["name"]: (f.get("detail") or f["message"]) for f in execution["failures"]
                         if f.get("kind") == "failure" and f["file"].endswith("_generated")}
-            if leftover:
-                actions = self.generator.repair(modules, leftover, index, quarantine_only=True)
-                repairs.extend(actions)
-                execution = self.verifier.run_tests(paths, index.source_roots, extra, out_dir, "after")
+            if not leftover:
+                break
+            actions = self.generator.repair(modules, leftover, index, quarantine_only=True)
+            repairs.extend(actions)
+            if not actions:
+                break
+            execution = self.verifier.run_tests(paths, index.source_roots, extra, out_dir, "after", cwd=index.root)
         if execution.get("status") == "ran" and execution.get("errors", 0) > 0:
             generated_errors = [f for f in execution["failures"] if f.get("kind") == "error" and f["file"].endswith("_generated")]
             if generated_errors:

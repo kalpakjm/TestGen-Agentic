@@ -31,12 +31,39 @@ def ansi_rule(trigger: dict) -> dict:
     }
 
 
+def ansi_division_rule(trigger: dict) -> dict:
+    """Division of Spark columns: with ANSI mode on, dividing by zero raises instead of returning null.
+    Kept as a separate rule (review only): the migrated-test template feeds unparseable text, which does not
+    exercise a zero divisor."""
+    return {
+        "id": "P-ANSI-DIV",
+        "title": "ANSI-sensitive division of columns (division by zero raises)",
+        "description": "With ANSI mode on, dividing a column by zero raises DIVIDE_BY_ZERO instead of returning null.",
+        "matchers": [{"type": "column_division"}],
+        "applies": {"type": "always"},
+        "severity": "high",
+        "recommendation": "Guard the divisor (when(divisor != 0, a / divisor)), use try_divide through F.expr, "
+                          "or set spark.sql.ansi.enabled to false explicitly.",
+        "source": trigger.get("source", ""),
+        "origin": "plugin:ansi",
+        "plugin": "ansi-review",
+        "verified": bool(trigger.get("verified")),
+        "evidence": f"Activated by rule {trigger.get('id')}: {trigger.get('title', '')[:100]}",
+    }
+
+
 def plugin_rules(rules: list) -> list:
     """Extra detection rules for the plugins that the release-note rules activate."""
-    if any(r.get("plugin") == "ansi" for r in rules):
+    trigger = next((r for r in rules if r.get("plugin") == "ansi"), None)
+    if trigger is None:
+        trigger = next((r for r in rules if (r.get("emulation") or {}).get("conf") == ANSI_CONF
+                        and (r.get("emulation") or {}).get("value") == "true"), None)
+    if trigger is None:
         return []
-    for rule in rules:
-        emulation = rule.get("emulation")
-        if emulation and emulation.get("conf") == ANSI_CONF and emulation.get("value") == "true":
-            return [ansi_rule(rule)]
-    return []
+    present = {r.get("id") for r in rules}
+    extra = []
+    if not any(r.get("plugin") == "ansi" for r in rules):
+        extra.append(ansi_rule(trigger))
+    if "P-ANSI-DIV" not in present:
+        extra.append(ansi_division_rule(trigger))
+    return extra

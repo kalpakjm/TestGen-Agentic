@@ -2,12 +2,27 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import os
 from pathlib import Path
 from typing import Optional
 
 import yaml
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+
+def _find_repo_root() -> Path:
+    """Folder that holds configs/, knowledge/, prompts/ and data/.
+
+    Works for `python run.py`, for `pip install -e .` and, through PTAGENT_HOME or the current folder,
+    for a regular install where the package lives in site-packages.
+    """
+    candidates = [os.environ.get("PTAGENT_HOME"), Path(__file__).resolve().parents[2], Path.cwd()]
+    for candidate in candidates:
+        if candidate and (Path(candidate) / "knowledge").is_dir() and (Path(candidate) / "prompts").is_dir():
+            return Path(candidate).resolve()
+    return Path(__file__).resolve().parents[2]
+
+
+REPO_ROOT = _find_repo_root()
 DEFAULT_CONFIG = REPO_ROOT / "configs" / "config.yaml"
 
 
@@ -44,6 +59,7 @@ class Config:
     max_repair_attempts: int = 2
     coverage_target: float = 80.0
     verify_timeout_s: int = 900
+    ignore_project_addopts: bool = True
     from_dbr: str = "15.4"
     to_dbr: str = "17.3"
     rules_mode: str = "dynamic"  # dynamic (read the release notes) | curated (rule file) | both
@@ -89,6 +105,7 @@ def load_config(path: Optional[Path] = None) -> Config:
     cfg.max_repair_attempts = int(verification.get("max_repair_attempts", cfg.max_repair_attempts))
     cfg.coverage_target = float(verification.get("coverage_target", cfg.coverage_target))
     cfg.verify_timeout_s = int(verification.get("timeout_s", cfg.verify_timeout_s))
+    cfg.ignore_project_addopts = bool(verification.get("ignore_project_addopts", cfg.ignore_project_addopts))
     cfg.from_dbr = str(upgrade.get("from_dbr", cfg.from_dbr))
     cfg.to_dbr = str(upgrade.get("to_dbr", cfg.to_dbr))
     notes = raw.get("release_notes", {}) or {}

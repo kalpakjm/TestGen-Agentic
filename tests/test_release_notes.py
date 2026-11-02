@@ -234,7 +234,7 @@ class BriefAndRulesTests(unittest.TestCase):
         ansi = [r for r in self.rules if r.get("emulation", {}).get("conf") == "spark.sql.ansi.enabled"]
         self.assertTrue(ansi)
         extra = plugin_rules(self.rules)
-        self.assertEqual([r["id"] for r in extra], ["P-ANSI"])
+        self.assertEqual([r["id"] for r in extra], ["P-ANSI", "P-ANSI-DIV"])
         self.assertEqual(extra[0]["plugin"], "ansi")
         target, current = emulation_confs([{"emulation": ansi[0]["emulation"]}])
         self.assertEqual(target, {"spark.sql.ansi.enabled": "true"})
@@ -269,6 +269,7 @@ class EndToEndTests(unittest.TestCase):
         cfg.sql_guide_url = "https://spark/sql_migration_guide"
         options = {"rules": "dynamic", "local_dir": str(FIXTURES), "offline": True, **notes}
         with tempfile.TemporaryDirectory() as tmp:
+            cfg.notes_cache_dir = Path(tmp) / "cache"  # never read the real pages cached by earlier `notes` runs
             report = Orchestrator(cfg).run(SAMPLES / project, mode="C", from_dbr="15.4", to_dbr="17.3",
                                            out_root=Path(tmp), notes=options)
             files = sorted(p.name for p in (Path(tmp) / project).iterdir())
@@ -293,6 +294,7 @@ class EndToEndTests(unittest.TestCase):
         cfg = load_config()
         cfg.run_tests = "never"
         with tempfile.TemporaryDirectory() as tmp:
+            cfg.notes_cache_dir = Path(tmp) / "cache"
             empty = Path(tmp) / "notes"
             empty.mkdir()
             (empty / "16.0.html").write_text((FIXTURES / "16.0.html").read_text(encoding="utf-8"), encoding="utf-8")
@@ -305,6 +307,7 @@ class EndToEndTests(unittest.TestCase):
         cfg = load_config()
         cfg.run_tests = "never"
         with tempfile.TemporaryDirectory() as tmp:
+            cfg.notes_cache_dir = Path(tmp) / "cache"  # an empty cache, whatever earlier runs saved
             report = Orchestrator(cfg).run(SAMPLES / "legacy_runtime", mode="C", from_dbr="15.4", to_dbr="17.3",
                                            out_root=Path(tmp) / "out",
                                            notes={"rules": "dynamic", "offline": True, "local_dir": str(Path(tmp) / "none")})

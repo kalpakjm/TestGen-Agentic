@@ -49,7 +49,7 @@ class VerifierAgent(Agent):
             return False, "missing: " + ", ".join(missing) + " (install requirements.txt and a JDK to enable test execution)"
         return True, ""
 
-    def run_tests(self, paths, source_roots, extra_paths, work_dir: Path, label: str, extra_env=None) -> dict:
+    def run_tests(self, paths, source_roots, extra_paths, work_dir: Path, label: str, extra_env=None, cwd=None) -> dict:
         if not paths:
             return {"status": "skipped", "reason": "no tests to run", "label": label}
         can_run, reason = self.dynamic_status()
@@ -67,7 +67,13 @@ class VerifierAgent(Agent):
         env["PYTHONPATH"] = os.pathsep.join(python_paths + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else []))
         env["PTAGENT_PYTHONPATH"] = os.pathsep.join(python_paths)
         env["COVERAGE_FILE"] = str(cov_data)
-        env.setdefault("PYSPARK_PYTHON", sys.executable)
+        # Spark's Python workers must run the same Python minor version as the driver (this interpreter).
+        # A PYSPARK_PYTHON left over from another installation causes PYTHON_VERSION_MISMATCH, so it is replaced.
+        previous = env.get("PYSPARK_PYTHON")
+        if previous and os.path.normcase(os.path.abspath(previous)) != os.path.normcase(os.path.abspath(sys.executable)):
+            self.log("PYSPARK_PYTHON replaced", label=label, previous=previous, now=sys.executable)
+        env["PYSPARK_PYTHON"] = sys.executable
+        env["PYSPARK_DRIVER_PYTHON"] = sys.executable
         env.update(extra_env or {})
         cmd = [
             sys.executable, "-m", "coverage", "run", "--branch",
@@ -75,8 +81,15 @@ class VerifierAgent(Agent):
             "-m", "pytest", *[str(p) for p in paths],
             "-q", "-vv", "--continue-on-collection-errors", "-p", "no:cacheprovider", f"--junitxml={junit}",
         ]
+        if self.cfg.ignore_project_addopts:
+            # a project's own pytest options (for example --cov=... needing pytest-cov) must not break our run;
+            # coverage is measured by this tool instead
+            cmd += ["-o", "addopts="]
         try:
-            proc = subprocess.run(cmd, cwd=work, env=env, capture_output=True, text=True, timeout=self.cfg.verify_timeout_s)
+            # Run from the project folder (cwd), as a developer would: tests often read files such as data/sample.csv
+            # by a relative path. Reports are written to absolute paths in the work folder either way.
+            proc = subprocess.run(cmd, cwd=Path(cwd) if cwd else work, env=env, capture_output=True, text=True,
+                                  timeout=self.cfg.verify_timeout_s)
         except subprocess.TimeoutExpired:
             return {"status": "error", "reason": f"timed out after {self.cfg.verify_timeout_s}s", "label": label}
         if not junit.exists():

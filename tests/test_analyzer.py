@@ -28,6 +28,30 @@ class AnalyzerTests(unittest.TestCase):
         self.assertEqual([f.name for f in notebook_functions], ["status_counts"])
         self.assertEqual(notebook_functions[0].module, "nb_orders_exploration")
 
+    def test_code_outside_src_gets_its_folder_as_an_import_root(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "src" / "pkg").mkdir(parents=True)
+            (root / "src" / "pkg" / "a.py").write_text("def f(x):\n    return x\n")
+            (root / "scripts").mkdir()
+            (root / "scripts" / "costs.py").write_text("def g(x):\n    return x\n")
+            index = build_index(root)
+            roots = [Path(r).resolve() for r in index.source_roots]
+            self.assertEqual(roots, [(root / "src").resolve(), (root / "scripts").resolve()])
+            self.assertEqual({fn.module for fn in index.functions}, {"pkg.a", "costs"})
+
+    def test_packaging_scripts_are_not_indexed(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "setup.py").write_text("from setuptools import setup\nsetup(version=open('v.py').read())\n")
+            (root / "job.py").write_text("def run(df):\n    return df\n")
+            index = build_index(root)
+            self.assertEqual([p.name for p in index.source_files], ["job.py"])
+
     def test_existing_tests_are_detected(self):
         index = build_index(SAMPLES / "orders_with_tests")
         self.assertTrue(index.has_tests)

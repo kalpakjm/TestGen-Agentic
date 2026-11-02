@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ptagent"
+version = "0.1.0"
+description = "Multi-agent system that generates, maintains and migrates pytest suites for PySpark code on Databricks"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = [
+    "pyyaml>=6.0",
+    "pytest>=7.4",
+    "coverage>=7.3",
+]
+
+[project.optional-dependencies]
+# Running the generated tests needs PySpark and a JDK (Java 17 recommended).
+spark = [
+    "pyspark>=3.5.0,<4.0.0",
+    "setuptools>=68",
+]
+# Extra packages that some real projects need to import (see docs/evaluation.md for why each is pinned).
+eval = [
+    "delta-spark==3.2.0",
+    "pandas<3",
+    "numpy<2",
+    "pyarrow<18",
+    "setuptools<81",
+]
+
+[project.scripts]
+ptagent = "ptagent.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -41,6 +41,22 @@ class RuntimeImpactTests(unittest.TestCase):
         report = self.agent.analyze(index, "13.3", "17.3")
         self.assertIn("tests/test_cleaning.py", report["tests_to_review"])  # cleaning.py uses cast / to_date
 
+    def test_column_division_is_found_but_plain_arithmetic_is_not(self):
+        import ast
+        from ptagent.agents.runtime_impact import matches
+        m = {"type": "column_division"}
+
+        def hits(code):
+            return [ast.unparse(n) for n in ast.walk(ast.parse(code)) if matches(n, m)]
+
+        self.assertEqual(hits('x = col("sls_sales") / col("sls_price")'), ["col('sls_sales') / col('sls_price')"])
+        self.assertEqual(len(hits('x = abs(F.col("a") / F.col("b"))')), 1)
+        self.assertEqual(len(hits('x = df["a"] / df["b"]')), 1)
+        self.assertEqual(len(hits('x = col("a") / 0')), 1)          # a zero literal divisor raises too
+        self.assertEqual(hits('x = col("a") / 100'), [])             # a non-zero literal cannot divide by zero
+        self.assertEqual(hits('ratio = total / count'), [])          # plain Python arithmetic
+        self.assertEqual(hits('x = col("a") // col("b")'), [])       # only true division is matched
+
 
 if __name__ == "__main__":
     unittest.main()

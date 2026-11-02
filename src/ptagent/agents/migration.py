@@ -85,8 +85,8 @@ class MigrationAgent(Agent):
         existing_dirs = sorted({p.parent for p in index.test_files})
         extra = [out_dir / "extracted"] if (out_dir / "extracted").exists() else []
         if target_confs:
-            current = self.verifier.run_tests(existing_dirs, index.source_roots, [], out_dir, "current_runtime", emulation_env(current_confs))
-            target = self.verifier.run_tests(existing_dirs, index.source_roots, [], out_dir, "target_runtime", emulation_env(target_confs))
+            current = self.verifier.run_tests(existing_dirs, index.source_roots, [], out_dir, "current_runtime", emulation_env(current_confs), cwd=index.root)
+            target = self.verifier.run_tests(existing_dirs, index.source_roots, [], out_dir, "target_runtime", emulation_env(target_confs), cwd=index.root)
         else:
             current = target = {"status": "skipped", "reason": "no option with a changed default to emulate"}
         result["existing_tests"] = {"current_runtime": self._slim(current), "target_runtime": self._slim(target)}
@@ -98,7 +98,7 @@ class MigrationAgent(Agent):
 
         if modules:
             run = self.verifier.run_tests([migrated_dir], index.source_roots, extra, out_dir, "migrated",
-                                          emulation_env(target_confs) if target_confs else None)
+                                          emulation_env(target_confs) if target_confs else None, cwd=index.root)
             result["migrated_run"] = self._slim(run)
         ansi_rule = next((rules_by_id[i] for i in ansi_ids if i in rules_by_id), {})
         result["proposals"] = self._propose(index, broken, {"R002": ansi_rule}, impact, migrated_dir)
@@ -167,7 +167,7 @@ class MigrationAgent(Agent):
             path.write_text(header + "\n\n" + "\n\n".join(body), encoding="utf-8")
             modules.append({"file": path.name, "module": module, "functions": [fn.qualname for fn, _ in items], "tests": tests})
         if modules:
-            self.generator.write_conftest(migrated_dir, [Path(r) for r in index.source_roots] + extra_paths)
+            self.generator.write_conftest(migrated_dir, [index.root] + [Path(r) for r in index.source_roots] + extra_paths)
         return modules, skipped
 
     @staticmethod
@@ -261,6 +261,8 @@ def test_{name}_bad_input_becomes_null_when_ansi_is_off(spark):
         migrated = set(migrated_functions)
         for action in impact["actions"]:
             files, note = action["files"], "Not testable on a local PySpark; check on a cluster with the target runtime."
+            if action["rule_id"] == "P-ANSI-DIV":
+                note = "Check that each divisor can never be 0 (or guard it); under ANSI a zero divisor fails the job."
             if action["rule_id"] in ansi_ids:
                 # keep only the ANSI findings that sit outside the functions that received migrated tests
                 leftover = []

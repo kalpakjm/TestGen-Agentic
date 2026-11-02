@@ -62,6 +62,53 @@ class GeneratorTests(unittest.TestCase):
         from ptagent.agents.test_generator import CONFTEST
         self.assertIn("spark.sql.ansi.enabled", CONFTEST)
 
+    def test_conftest_puts_the_project_root_behind_the_source_roots(self):
+        import sys
+        from ptagent.agents.test_generator import TestGeneratorAgent
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "proj"
+            (root / "src").mkdir(parents=True)
+            out = Path(tmp) / "out" / "generated_tests"
+            TestGeneratorAgent.write_conftest(out, [root, root / "src"])
+            saved = list(sys.path)
+            try:
+                exec(compile((out / "conftest.py").read_text(), str(out / "conftest.py"), "exec"),
+                     {"__file__": str(out / "conftest.py"), "__name__": "conftest_probe"})
+                order = [p for p in sys.path if p in (str(root.resolve()), str((root / "src").resolve()))]
+            finally:
+                sys.path[:] = saved
+        self.assertEqual(order, [str((root / "src").resolve()), str(root.resolve())])
+
+    def test_determinism_test_works_for_objects_without_value_equality(self):
+        import subprocess
+        import sys
+        with tempfile.TemporaryDirectory() as tmp:
+            proj = Path(tmp) / "proj"
+            proj.mkdir()
+            (proj / "cli.py").write_text("import argparse\n\n\ndef arg_parser(name: str):\n"
+                                         "    return argparse.ArgumentParser(prog=name)\n")
+            index = build_index(proj)
+            modules, _, _ = self.agent.generate(index, index.functions, Path(tmp) / "out")
+            text = modules[0].path.read_text()
+            self.assertIn("test_arg_parser_is_deterministic", text)
+            run = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider",
+                                  str(modules[0].path), "-k", "deterministic"],
+                                 capture_output=True, text=True, cwd=tmp)
+            self.assertIn("1 passed", run.stdout + run.stderr, run.stdout + run.stderr)
+
+    def test_files_from_an_earlier_run_are_removed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            (out / "generated_tests").mkdir()
+            stale = out / "generated_tests" / "test_old_module_generated.py"
+            stale.write_text("def test_old():\n    assert False\n")
+            (out / "quarantined_tests").mkdir()
+            (out / "quarantined_tests" / "old.py").write_text("x")
+            self.agent.generate(self.index, [self.fn("safe_divide")], out)
+            self.assertFalse(stale.exists())
+            self.assertFalse((out / "quarantined_tests" / "old.py").exists())
+            self.assertTrue((out / "generated_tests" / "test_orders_etl_utils_generated.py").exists())
+
     def test_plan_ignores_defaulted_parameters(self):
         plan, _ = self.agent.plan(self.fn("top_customers"))
         self.assertEqual(plan["call_args"], "df")

@@ -302,7 +302,10 @@ class TestGeneratorAgent(Agent):
         if plan["kind"] == "pure":
             return (
                 f"def test_{name}_returns_expected_type():\n    result = {call}\n    {asserts}\n\n\n"
-                f"def test_{name}_is_deterministic():\n    assert {call} == {call}\n"
+                f"def test_{name}_is_deterministic():\n    first, second = {call}, {call}\n"
+                f"    if type(first).__eq__ is object.__eq__:  # no value equality (e.g. a parser object): compare the text form\n"
+                f"        first, second = repr(first), repr(second)\n"
+                f"    assert first == second\n"
             )
         if plan["kind"] == "spark_only":
             return f"def test_{name}_returns_expected_type(spark):\n    result = _materialize({call})\n    {asserts}\n"
@@ -409,6 +412,15 @@ class TestGeneratorAgent(Agent):
         out_dir = Path(out_dir)
         tests_dir = out_dir / "generated_tests"
         tests_dir.mkdir(parents=True, exist_ok=True)
+        # Files from an earlier run into the same output folder would otherwise be run again, even for
+        # functions that no longer get tests (for example because the project's own tests now cover them).
+        for stale in tests_dir.glob("test_*_generated.py"):
+            stale.unlink()
+        for folder in (out_dir / "quarantined_tests", out_dir / "llm_rejections"):
+            if folder.is_dir():
+                for old_file in folder.iterdir():
+                    if old_file.is_file():
+                        old_file.unlink()
         self._project_columns = self._union_columns(index)
         by_module, skipped, retrieval = {}, [], {}
         for fn in functions:
@@ -461,7 +473,7 @@ class TestGeneratorAgent(Agent):
                      backend=self.backend.name, llm_used=any(b.used_llm for b in blocks),
                      notes={b.function: b.note for b in blocks})
 
-        self.write_conftest(tests_dir, [Path(r) for r in index.source_roots] + path_entries)
+        self.write_conftest(tests_dir, [index.root] + [Path(r) for r in index.source_roots] + path_entries)
         for item in skipped:
             self.log("skipped function", **item)
         self._unload()
@@ -472,6 +484,8 @@ class TestGeneratorAgent(Agent):
         """Write the shared conftest.py (Spark fixture and import paths) next to generated tests."""
         tests_dir = Path(tests_dir)
         tests_dir.mkdir(parents=True, exist_ok=True)
+        # Later entries are inserted in front, so they win. The project root (a prefix of every other root, so it
+        # sorts first) has the lowest priority: it only serves imports such as `from tests.helpers import x`.
         relative = sorted({os.path.relpath(r, tests_dir) for r in roots})
         (tests_dir / "conftest.py").write_text(CONFTEST.replace("__PATHS__", repr(relative)), encoding="utf-8")
 

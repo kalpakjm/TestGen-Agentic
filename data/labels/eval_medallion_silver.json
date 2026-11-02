@@ -1,0 +1,37 @@
+{
+  "repository": "https://github.com/ahsan-habib-sunny/databricks-medallion-pipeline",
+  "file": "notebooks/silver/silver_transformation.py",
+  "meaning": "problem = can raise once ANSI mode is on by default (Spark 4.0 / DBR 17.x) where it returns NULL today",
+  "labels": {
+    "true": [
+      88,
+      91
+    ],
+    "likely_true": [
+      27,
+      158,
+      159,
+      234,
+      235,
+      236,
+      237
+    ],
+    "unsure": [
+      177,
+      178,
+      242,
+      246,
+      250,
+      360,
+      361
+    ],
+    "false_alarm": [],
+    "missed_in_first_pass": [
+      282,
+      289,
+      302,
+      309
+    ]
+  },
+  "labelled_by": "tool author"
+}

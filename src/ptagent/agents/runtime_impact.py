@@ -23,6 +23,22 @@ def dotted(node) -> str:
     return "(expr)"
 
 
+COLUMN_FUNCTIONS = {"col", "column", "lit", "expr"}
+
+
+def _is_column(node) -> bool:
+    """True when the expression is built from Spark columns: col("x"), F.col("x"), df["x"], or arithmetic on them."""
+    for sub in ast.walk(node):
+        if isinstance(sub, ast.Call):
+            func = sub.func
+            name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", "")
+            if name in COLUMN_FUNCTIONS:
+                return True
+        if isinstance(sub, ast.Subscript) and isinstance(sub.slice, ast.Constant) and isinstance(sub.slice.value, str):
+            return True
+    return False
+
+
 def matches(node, matcher: dict) -> bool:
     kind = matcher["type"]
     if kind == "import":
@@ -58,6 +74,14 @@ def matches(node, matcher: dict) -> bool:
     if kind == "string_contains":
         return (isinstance(node, ast.Constant) and isinstance(node.value, str)
                 and any(s in node.value for s in matcher["substrings"]))
+    if kind == "column_division":
+        # a / b where either side is a Spark column expression and the divisor is not a non-zero literal
+        if not (isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div)):
+            return False
+        right = node.right
+        if isinstance(right, ast.Constant) and isinstance(right.value, (int, float)) and right.value != 0:
+            return False
+        return _is_column(node.left) or _is_column(right)
     if kind == "cast_to":
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "cast" and node.args:
             arg = node.args[0]

@@ -9,6 +9,7 @@ from pathlib import Path
 from .agents.orchestrator import Orchestrator
 from .config import REPO_ROOT, load_config
 from .llm import BACKEND_NAMES
+from .preflight import UsageError, check_backend, check_project, check_versions
 from .evaluation.evaluate import evaluate
 from .tools.analyzer import build_index
 
@@ -45,6 +46,7 @@ def _add_notes_flags(parser):
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="run.py", description="Multi-agent test generation for PySpark on Databricks")
     parser.add_argument("--config", help="path to a config YAML (default: configs/config.yaml)")
+    parser.add_argument("--debug", action="store_true", help="show the full Python traceback when something fails")
     sub = parser.add_subparsers(dest="command", required=True)
 
     analyze = sub.add_parser("analyze", help="index a project and print a summary")
@@ -158,7 +160,32 @@ def _show_notes(cfg, args) -> int:
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
+    try:
+        return _main(args)
+    except KeyboardInterrupt:
+        print("stopped by the user", file=sys.stderr)
+        return 130
+    except UsageError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    except Exception as exc:  # anything unexpected: one clear line, the traceback only on request
+        if getattr(args, "debug", False):
+            raise
+        print(f"error: ptagent stopped: {type(exc).__name__}: {exc}", file=sys.stderr)
+        print("  The run_trace.json in the output folder shows how far it got. "
+              "Run again with --debug before the command (for example: ptagent --debug run ...) for the full traceback.",
+              file=sys.stderr)
+        return 1
+
+
+def _main(args) -> int:
     cfg = _config(args)
+    if getattr(args, "project", None):
+        check_project(args.project)
+    check_versions(getattr(args, "from_dbr", None), getattr(args, "to_dbr", None))
+    if args.command in ("run", "demo", "evaluate"):
+        for warning in check_backend(cfg.llm):
+            print(f"WARNING: {warning}", file=sys.stderr)
     if args.command == "analyze":
         print(json.dumps(build_index(args.project, cfg.skip_dirs).summary(), indent=2))
         return 0

@@ -135,6 +135,9 @@ def is_test_path(path: Path, root: Path) -> bool:
     return any(p in TEST_DIR_NAMES for p in parts)
 
 
+BUILD_SCRIPTS = {"setup.py", "noxfile.py", "fabfile.py", "tasks.py"}
+
+
 def build_index(project_dir, skip_dirs=None) -> ProjectIndex:
     """Scan a project folder and build the index every agent works from."""
     root = Path(project_dir).resolve()
@@ -150,6 +153,8 @@ def build_index(project_dir, skip_dirs=None) -> ProjectIndex:
             if filename.endswith(".ipynb"):
                 _index_ipynb(index, path, rel)
             elif filename.endswith(".py"):
+                if filename in BUILD_SCRIPTS:
+                    continue  # packaging and task scripts run code on import; they are not code under test
                 if is_test_path(path, root):
                     _index_test(index, path, rel)
                 elif is_databricks_source(path):
@@ -158,6 +163,13 @@ def build_index(project_dir, skip_dirs=None) -> ProjectIndex:
                 else:
                     index.source_files.append(path)
                     _index_python(index, path, rel, origin="module")
+    # Code outside src/ (for example scripts/tool.py) is imported by its file name, so its folder is an import root too.
+    original = [Path(r).resolve() for r in roots]
+    for path in index.source_files:
+        parent = path.resolve().parent
+        inside = any(parent == r or r in parent.parents for r in original)
+        if not inside and parent not in [Path(r).resolve() for r in index.source_roots]:
+            index.source_roots.append(parent)
     return index
 
 
