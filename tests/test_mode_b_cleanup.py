@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 import tempfile
@@ -26,6 +27,22 @@ PROJECT = {
     "tests/test_core.py": "from pkg.core import only_tests_use_me\n\n\ndef test_x():\n    assert only_tests_use_me() == 3\n",
 }
 
+
+
+def dry_run_patch(patch_file, cwd):
+    """Check that a patch applies, without changing anything. Returns (returncode, output), or None when no
+    tool is available. `git apply --check` is preferred: it is on every machine that has git and behaves the
+    same everywhere. The `patch` program on Windows is often an old build (2.5.9, shipped with Strawberry Perl
+    on GitHub's runners) that crashes on valid patches, so it is only used on other systems."""
+    if shutil.which("git"):
+        result = subprocess.run(["git", "apply", "--check", "-v", str(patch_file)], cwd=cwd,
+                                capture_output=True, text=True)
+        return result.returncode, result.stdout + result.stderr
+    if shutil.which("patch") and os.name != "nt":
+        result = subprocess.run(["patch", "-p1", "--dry-run", "-i", str(patch_file)], cwd=cwd,
+                                capture_output=True, text=True)
+        return result.returncode, result.stdout + result.stderr
+    return None
 
 def write_project(root: Path):
     for rel, text in PROJECT.items():
@@ -75,10 +92,9 @@ class ProtectionTests(unittest.TestCase):
         self.agent.apply(self.index, self.report, out)
         patch = out / "cleanup.patch"
         self.assertIn("--- a/src/pkg/core.py", patch.read_text())
-        if shutil.which("patch"):
-            result = subprocess.run(["patch", "-p1", "--dry-run", "-i", str(patch)], cwd=self.root,
-                                    capture_output=True, text=True)
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        checked = dry_run_patch(patch, self.root)
+        if checked:
+            self.assertEqual(checked[0], 0, checked[1])
 
     def test_in_place_apply_needs_confirmation_and_keeps_backups(self):
         out = Path(self.tmp.name) / "out"
@@ -111,10 +127,9 @@ class LineEndingTests(unittest.TestCase):
             cleaned = (out / "refactored/src/pkg/core.py").read_bytes()
             self.assertNotIn(b"truly_dead", cleaned)
             self.assertNotIn(b"\n", cleaned.replace(b"\r\n", b""))  # no bare LF left
-            if shutil.which("patch"):
-                result = subprocess.run(["patch", "-p1", "--dry-run", "-i", str(out / "cleanup.patch")],
-                                        cwd=root, capture_output=True, text=True)
-                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            checked = dry_run_patch(out / "cleanup.patch", root)
+            if checked:
+                self.assertEqual(checked[0], 0, checked[1])
 
 
 class ConftestPathTests(unittest.TestCase):
