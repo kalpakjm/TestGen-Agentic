@@ -484,9 +484,17 @@ class TestGeneratorAgent(Agent):
         """Write the shared conftest.py (Spark fixture and import paths) next to generated tests."""
         tests_dir = Path(tests_dir)
         tests_dir.mkdir(parents=True, exist_ok=True)
-        # Later entries are inserted in front, so they win. The project root (a prefix of every other root, so it
-        # sorts first) has the lowest priority: it only serves imports such as `from tests.helpers import x`.
-        relative = sorted({os.path.relpath(r, tests_dir) for r in roots})
+        # Later entries are inserted in front, so they win. Callers pass the project root first, so it has the
+        # lowest priority: it only serves imports such as `from tests.helpers import x`.
+        # Paths are stored relative to the tests folder so the output can be moved; a path on another drive
+        # (Windows: project on D:, output on C:) has no relative form and is stored as an absolute path.
+        def portable(root):
+            try:
+                return os.path.relpath(root, tests_dir)
+            except ValueError:
+                return str(Path(root).resolve())
+
+        relative = list(dict.fromkeys(portable(r) for r in roots))
         (tests_dir / "conftest.py").write_text(CONFTEST.replace("__PATHS__", repr(relative)), encoding="utf-8")
 
     # ------------------------------------------------------------------ repair

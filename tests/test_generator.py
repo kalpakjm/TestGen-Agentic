@@ -109,6 +109,32 @@ class GeneratorTests(unittest.TestCase):
             self.assertFalse((out / "quarantined_tests" / "old.py").exists())
             self.assertTrue((out / "generated_tests" / "test_orders_etl_utils_generated.py").exists())
 
+    def test_conftest_handles_a_project_on_another_drive(self):
+        import os
+        import sys
+        from unittest import mock
+        from ptagent.agents.test_generator import TestGeneratorAgent
+        real_relpath = os.path.relpath
+
+        def cross_drive(path, start=os.curdir):
+            if "other_drive" in str(path):
+                raise ValueError("path is on mount 'D:', start on mount 'C:'")
+            return real_relpath(path, start)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            far = Path(tmp) / "other_drive" / "src"
+            far.mkdir(parents=True)
+            out = Path(tmp) / "out" / "generated_tests"
+            with mock.patch("os.path.relpath", cross_drive):
+                TestGeneratorAgent.write_conftest(out, [Path(tmp) / "proj", far])
+            saved = list(sys.path)
+            try:
+                exec(compile((out / "conftest.py").read_text(), str(out / "conftest.py"), "exec"),
+                     {"__file__": str(out / "conftest.py"), "__name__": "conftest_probe"})
+                self.assertIn(str(far.resolve()), sys.path)
+            finally:
+                sys.path[:] = saved
+
     def test_plan_ignores_defaulted_parameters(self):
         plan, _ = self.agent.plan(self.fn("top_customers"))
         self.assertEqual(plan["call_args"], "df")
